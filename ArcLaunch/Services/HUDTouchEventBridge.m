@@ -120,6 +120,7 @@ static const uint32_t ArcLaunchDigitizerFieldTouch = (11 << 16) + 9;
 static const CGFloat ArcLaunchGlobalTapMaximumDistance = 12.0;
 static const NSTimeInterval ArcLaunchGlobalTapMaximumDuration = 0.5;
 
+static BOOL (^ArcLaunchGlobalTapShouldTrack)(CGPoint);
 static void (^ArcLaunchGlobalTapHandler)(CGPoint);
 static ArcLaunchIOHIDEventSystemClientRef ArcLaunchGlobalTapClient;
 static ArcLaunchHIDEventGetTypeFunction ArcLaunchHIDEventGetType;
@@ -162,6 +163,10 @@ static void ArcLaunchHandleGlobalTapFinger(ArcLaunchIOHIDEventRef finger, NSMuta
 
     if (touching) {
         if (!start) {
+            if (ArcLaunchGlobalTapShouldTrack && !ArcLaunchGlobalTapShouldTrack(location)) {
+                ArcLaunchGlobalTapStarts[key] = NSNull.null;
+                return;
+            }
             ArcLaunchGlobalTapStart *tapStart = [ArcLaunchGlobalTapStart new];
             tapStart.location = location;
             tapStart.timestamp = now;
@@ -240,7 +245,8 @@ static BOOL ArcLaunchStartGlobalTapMonitor(void) {
     return YES;
 }
 
-void ArcLaunchSetGlobalTapHandler(void (^handler)(CGPoint)) {
+void ArcLaunchSetGlobalTapHandler(BOOL (^shouldTrack)(CGPoint), void (^handler)(CGPoint)) {
+    ArcLaunchGlobalTapShouldTrack = [shouldTrack copy];
     ArcLaunchGlobalTapHandler = [handler copy];
     [ArcLaunchGlobalTapStarts removeAllObjects];
     if (handler) {

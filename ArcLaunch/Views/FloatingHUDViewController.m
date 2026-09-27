@@ -157,16 +157,17 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
         };
         // 点击 HUD 可交互区域以外的地方时收起展开的悬浮窗。只旁观触摸，点击照常交给下层应用；
         // 不能用全屏透明视图接收，按不透明命中的图层会让系统把整屏触摸都路由给 HUD。
-        ArcLaunchSetGlobalTapHandler(^(CGPoint fixedLocation) {
+        // 是否落在 HUD 上要在按下时判断：点边栏缩略图时，抬起前缩略图已开始展开并离开边栏，
+        // 抬起时再判断会把这次点击误认为点了空白处，刚展开的窗口又被收回。
+        ArcLaunchSetGlobalTapHandler(^BOOL(CGPoint fixedLocation) {
             FloatingHUDViewController *strongSelf = weakSelf;
             if (!strongSelf || !strongSelf.isViewLoaded || !strongSelf.view.window) {
-                return;
+                return NO;
             }
             CGPoint point = [strongSelf.view convertPoint:fixedLocation fromCoordinateSpace:UIScreen.mainScreen.fixedCoordinateSpace];
-            if ([strongSelf.view pointInside:point withEvent:nil]) {
-                return;
-            }
-            [strongSelf.floatingWindowManager minimizeExpandedWindows];
+            return ![strongSelf.view pointInside:point withEvent:nil];
+        }, ^(CGPoint fixedLocation) {
+            [weakSelf.floatingWindowManager minimizeExpandedWindows];
         });
     }
 
@@ -268,7 +269,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-    ArcLaunchSetGlobalTapHandler(nil);
+    ArcLaunchSetGlobalTapHandler(nil, nil);
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
     if (_backdropAnimator.state == UIViewAnimatingStateActive) {
         [_backdropAnimator stopAnimation:YES];
