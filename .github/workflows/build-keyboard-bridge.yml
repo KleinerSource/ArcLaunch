@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   build:
-    name: Build jailbreak variants
+    name: Build architecture packages
     runs-on: macos-15
     steps:
       - name: Check out source
@@ -37,7 +37,7 @@ jobs:
           echo "THEOS=$THEOS" >> "$GITHUB_ENV"
           echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
 
-      - name: Build rootful, rootless, and RootHide packages
+      - name: Build arm64 and arm64e packages for all jailbreak layouts
         run: |
           set -euo pipefail
           artifact_dir="$RUNNER_TEMP/ArcLaunchKeyboardBridge"
@@ -45,82 +45,61 @@ jobs:
 
           build_package() {
             local arch="$1"
-            local variant="$2"
-            local scheme="$3"
-            local package_arch="$4"
-            gmake -C KeyboardBridgeTweak clean THEOS_PACKAGE_SCHEME="$scheme"
+            local package_arch="$2"
+            gmake -C KeyboardBridgeTweak clean THEOS_PACKAGE_SCHEME=rootless
             rm -f KeyboardBridgeTweak/packages/*.deb
-            gmake -C KeyboardBridgeTweak package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME="$scheme" ARCHS="$arch" THEOS_PACKAGE_ARCH="$package_arch"
-            local package
-            package="$(find KeyboardBridgeTweak/packages -maxdepth 1 -type f -name "*_${package_arch}.deb" -print -quit)"
-            test -n "$package"
-            test "$(dpkg-deb -f "$package" Architecture)" = "$package_arch"
-            local stage
-            stage="$(mktemp -d)"
-            dpkg-deb -x "$package" "$stage"
-            local filters
-            case "$variant" in
-              rootless) filters="$stage/var/jb/Library/MobileSubstrate/DynamicLibraries" ;;
-              rootful|roothide) filters="$stage/Library/MobileSubstrate/DynamicLibraries" ;;
-              *) echo "Unsupported package variant: $variant" >&2; return 1 ;;
-            esac
+            gmake -C KeyboardBridgeTweak package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless ARCHS="$arch" THEOS_PACKAGE_ARCH="$package_arch"
+
+            local source_package
+            source_package="$(find KeyboardBridgeTweak/packages -maxdepth 1 -type f -name "*_${package_arch}.deb" -print -quit)"
+            test -n "$source_package"
+            local source_root
+            source_root="$(mktemp -d)"
+            dpkg-deb -x "$source_package" "$source_root"
+            local filters="$source_root/var/jb/Library/MobileSubstrate/DynamicLibraries"
             test -s "$filters/ArcLaunchGuestKeyboardBridge.dylib"
-            lipo "$filters/ArcLaunchGuestKeyboardBridge.dylib" -verify_arch "$arch"
             test -s "$filters/ArcLaunchGuestKeyboardBridge.plist"
-            cp "$package" "$artifact_dir/ArcLaunchKeyboardBridge-${arch}-${variant}.deb"
+            lipo "$filters/ArcLaunchGuestKeyboardBridge.dylib" -verify_arch "$arch"
+
+            local package_root
+            package_root="$(mktemp -d)"
+            local payload="$package_root/var/mobile/Library/ArcLaunch/KeyboardBridge"
+            mkdir -p "$package_root/DEBIAN" "$payload"
+            cp "$filters/ArcLaunchGuestKeyboardBridge.dylib" "$payload/"
+            cp "$filters/ArcLaunchGuestKeyboardBridge.plist" "$payload/"
+            awk -v arch="$package_arch" '/^[Aa]rchitecture:/ { print "Architecture: " arch; next } { print }' KeyboardBridgeTweak/control > "$package_root/DEBIAN/control"
+            cp KeyboardBridgeTweak/postinst KeyboardBridgeTweak/prerm "$package_root/DEBIAN/"
+            chmod 755 "$package_root/DEBIAN/postinst" "$package_root/DEBIAN/prerm"
+            sh -n "$package_root/DEBIAN/postinst"
+            sh -n "$package_root/DEBIAN/prerm"
+
+            local package="$artifact_dir/ArcLaunchKeyboardBridge-${arch}.deb"
+            dpkg-deb --build "$package_root" "$package"
+            test "$(dpkg-deb -f "$package" Architecture)" = "$package_arch"
+
+            local verify_root
+            verify_root="$(mktemp -d)"
+            dpkg-deb -x "$package" "$verify_root"
+            test -s "$verify_root/var/mobile/Library/ArcLaunch/KeyboardBridge/ArcLaunchGuestKeyboardBridge.dylib"
+            test -s "$verify_root/var/mobile/Library/ArcLaunch/KeyboardBridge/ArcLaunchGuestKeyboardBridge.plist"
+            lipo "$verify_root/var/mobile/Library/ArcLaunch/KeyboardBridge/ArcLaunchGuestKeyboardBridge.dylib" -verify_arch "$arch"
           }
 
-          build_package arm64 rootful "" iphoneos-arm
-          build_package arm64e rootful "" iphoneos-arm
-          build_package arm64 rootless rootless iphoneos-arm64
-          build_package arm64e rootless rootless iphoneos-arm64
-          build_package arm64 roothide roothide iphoneos-arm64e
-          build_package arm64e roothide roothide iphoneos-arm64e
+          build_package arm64 iphoneos-arm64
+          build_package arm64e iphoneos-arm64e
 
-      - name: Upload arm64 rootful package
+      - name: Upload arm64 package
         uses: actions/upload-artifact@v7
         with:
-          name: ArcLaunchKeyboardBridge-arm64-rootful
-          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-arm64-rootful.deb
+          name: ArcLaunchKeyboardBridge-arm64
+          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-arm64.deb
           if-no-files-found: error
           retention-days: 30
 
-      - name: Upload arm64e rootful package
+      - name: Upload arm64e package
         uses: actions/upload-artifact@v7
         with:
-          name: ArcLaunchKeyboardBridge-arm64e-rootful
-          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-arm64e-rootful.deb
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Upload arm64 rootless package
-        uses: actions/upload-artifact@v7
-        with:
-          name: ArcLaunchKeyboardBridge-arm64-rootless
-          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-arm64-rootless.deb
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Upload arm64e rootless package
-        uses: actions/upload-artifact@v7
-        with:
-          name: ArcLaunchKeyboardBridge-arm64e-rootless
-          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-arm64e-rootless.deb
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Upload arm64 RootHide package
-        uses: actions/upload-artifact@v7
-        with:
-          name: ArcLaunchKeyboardBridge-arm64-roothide
-          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-arm64-roothide.deb
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Upload arm64e RootHide package
-        uses: actions/upload-artifact@v7
-        with:
-          name: ArcLaunchKeyboardBridge-arm64e-roothide
-          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-arm64e-roothide.deb
+          name: ArcLaunchKeyboardBridge-arm64e
+          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-arm64e.deb
           if-no-files-found: error
           retention-days: 30

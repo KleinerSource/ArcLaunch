@@ -1,0 +1,16 @@
+#!/bin/sh
+set -e
+
+payload=/var/mobile/Library/ArcLaunch/KeyboardBridge
+
+if [ -d /var/jb/usr/lib ]; then
+    destination=/var/jb/Library/MobileSubstrate/DynamicLibraries
+else
+    destination=/Library/MobileSubstrate/DynamicLibraries
+fi
+
+mkdir -p "$destination"
+cp -f "$payload/ArcLaunchGuestKeyboardBridge.dylib" "$destination/ArcLaunchGuestKeyboardBridge.dylib"
+cp -f "$payload/ArcLaunchGuestKeyboardBridge.plist" "$destination/ArcLaunchGuestKeyboardBridge.plist"
+chmod 755 "$destination/ArcLaunchGuestKeyboardBridge.dylib"
+chmod 644 "$destination/ArcLaunchGuestKeyboardBridge.plist"
