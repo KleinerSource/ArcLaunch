@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""按提交信息递增 KSBall 的版本号，并写回 KSBall/Info.plist。
+"""按提交信息递增 ArcLaunch 的版本号，并写回 ArcLaunch/Info.plist。
 
 版本号形如 x.y.z+build：x.y.z 写入 CFBundleShortVersionString，build 写入 CFBundleVersion。
 - 新增、删除或增强功能：次版本号 +1，补丁号归零；
@@ -21,7 +21,7 @@ import re
 import subprocess
 import sys
 
-INFO_PLIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "KSBall", "Info.plist")
+INFO_PLIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ArcLaunch", "Info.plist")
 # CI 写回版本号时使用的提交标题前缀，也是下一次计算递增类型的起点。
 BUILD_METADATA_PREFIX = "chore: bump build metadata"
 
@@ -130,7 +130,7 @@ def pending_commit_messages(cwd=None):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="按提交信息递增 KSBall 版本号并写回 Info.plist；不带参数时打印当前版本。")
+    parser = argparse.ArgumentParser(description="按提交信息递增 ArcLaunch 版本号并写回 Info.plist；不带参数时打印当前版本。")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--auto", action="store_true", help="按上一次 CI 版本递增之后的提交自动判断递增类型")
     mode.add_argument("--feature", action="store_const", const=FEATURE, dest="bump", help="次版本号 +1，补丁号归零")
@@ -138,7 +138,7 @@ def main(argv=None):
     mode.add_argument("--build-only", action="store_const", const=BUILD_ONLY, dest="bump", help="只增加 build")
     mode.add_argument("--set", metavar="VERSION", help="直接写入 x.y.z+build")
     parser.add_argument("--commit-message", action="append", metavar="MESSAGE", help="配合 --auto 使用，代替从 git 读取的提交信息，可重复")
-    parser.add_argument("--plist", default=INFO_PLIST, help="要读写的 Info.plist，默认为 KSBall/Info.plist")
+    parser.add_argument("--plist", default=INFO_PLIST, help="要读写的 Info.plist，默认为 ArcLaunch/Info.plist")
     args = parser.parse_args(argv)
     if args.commit_message is not None and not args.auto:
         parser.error("--commit-message 只能与 --auto 一起使用")

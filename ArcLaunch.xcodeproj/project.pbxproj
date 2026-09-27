@@ -1,0 +1,376 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A00000000000000000000200 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000101 /* main.m */; };
+		A00000000000000000000201 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000103 /* AppDelegate.m */; };
+		A00000000000000000000205 /* ArcLaunchSettings.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000121 /* ArcLaunchSettings.m */; };
+		A00000000000000000000206 /* ArcLaunchSettingsStore.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000123 /* ArcLaunchSettingsStore.m */; };
+		A00000000000000000000207 /* SystemApplicationBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000131 /* SystemApplicationBridge.m */; };
+		A00000000000000000000208 /* HUDSceneCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000133 /* HUDSceneCoordinator.m */; };
+		A00000000000000000000209 /* ArcLaunchFanLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000141 /* ArcLaunchFanLayout.m */; };
+		A00000000000000000000210 /* PassthroughHUDWindow.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000143 /* PassthroughHUDWindow.m */; };
+		A00000000000000000000211 /* FloatingHUDViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000145 /* FloatingHUDViewController.m */; };
+		A00000000000000000000212 /* ConfigurationViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000147 /* ConfigurationViewController.m */; };
+		A00000000000000000000213 /* AppPickerViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000149 /* AppPickerViewController.m */; };
+		A00000000000000000000214 /* HUDTouchEventBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000135 /* HUDTouchEventBridge.m */; };
+		A00000000000000000000215 /* ArcLaunchSharedStorage.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000151 /* ArcLaunchSharedStorage.m */; };
+		A00000000000000000000216 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000112 /* Assets.xcassets */; };
+		A00000000000000000000217 /* ShortcutArrangementViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000153 /* ShortcutArrangementViewController.m */; };
+		A00000000000000000000218 /* FloatingAppSceneHost.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000157 /* FloatingAppSceneHost.m */; };
+		A00000000000000000000219 /* FloatingAppWindowManager.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000159 /* FloatingAppWindowManager.m */; };
+		A00000000000000000000220 /* ArcLaunchFloatingWindowLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000194 /* ArcLaunchFloatingWindowLayout.m */; };
+		A00000000000000000000221 /* FloatingAppWindowView.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000196 /* FloatingAppWindowView.m */; };
+		A00000000000000000000230 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A00000000000000000000180 /* UIKit.framework */; };
+		A00000000000000000000231 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A00000000000000000000181 /* Foundation.framework */; };
+		A00000000000000000000240 /* ArcLaunchSettingsStoreTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000160 /* ArcLaunchSettingsStoreTests.m */; };
+		A00000000000000000000241 /* ArcLaunchFanLayoutTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000161 /* ArcLaunchFanLayoutTests.m */; };
+		A00000000000000000000242 /* SystemApplicationBridgeTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000162 /* SystemApplicationBridgeTests.m */; };
+		A00000000000000000000250 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A00000000000000000000182 /* XCTest.framework */; };
+		A00000000000000000000260 /* ArcLaunchUpdateChecker.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000191 /* ArcLaunchUpdateChecker.m */; };
+		A00000000000000000000261 /* ArcLaunchUpdateCheckerTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000192 /* ArcLaunchUpdateCheckerTests.m */; };
+		A00000000000000000000262 /* ArcLaunchFloatingWindowLayoutTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000198 /* ArcLaunchFloatingWindowLayoutTests.m */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A00000000000000000000351 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A00000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A00000000000000000000010;
+			remoteInfo = ArcLaunch;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		A00000000000000000000101 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		A00000000000000000000102 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
+		A00000000000000000000103 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
+		A00000000000000000000110 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A00000000000000000000111 /* ArcLaunch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ArcLaunch.entitlements; sourceTree = "<group>"; };
+		A00000000000000000000112 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A00000000000000000000121 /* ArcLaunchSettings.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArcLaunchSettings.m; sourceTree = "<group>"; };
+		A00000000000000000000120 /* ArcLaunchSettings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArcLaunchSettings.h; sourceTree = "<group>"; };
+		A00000000000000000000123 /* ArcLaunchSettingsStore.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArcLaunchSettingsStore.m; sourceTree = "<group>"; };
+		A00000000000000000000122 /* ArcLaunchSettingsStore.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArcLaunchSettingsStore.h; sourceTree = "<group>"; };
+		A00000000000000000000130 /* SystemApplicationBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SystemApplicationBridge.h; sourceTree = "<group>"; };
+		A00000000000000000000131 /* SystemApplicationBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SystemApplicationBridge.m; sourceTree = "<group>"; };
+		A00000000000000000000132 /* HUDSceneCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HUDSceneCoordinator.h; sourceTree = "<group>"; };
+		A00000000000000000000133 /* HUDSceneCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HUDSceneCoordinator.m; sourceTree = "<group>"; };
+		A00000000000000000000134 /* HUDTouchEventBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HUDTouchEventBridge.h; sourceTree = "<group>"; };
+		A00000000000000000000135 /* HUDTouchEventBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HUDTouchEventBridge.m; sourceTree = "<group>"; };
+		A00000000000000000000140 /* ArcLaunchFanLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArcLaunchFanLayout.h; sourceTree = "<group>"; };
+		A00000000000000000000141 /* ArcLaunchFanLayout.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArcLaunchFanLayout.m; sourceTree = "<group>"; };
+		A00000000000000000000142 /* PassthroughHUDWindow.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PassthroughHUDWindow.h; sourceTree = "<group>"; };
+		A00000000000000000000143 /* PassthroughHUDWindow.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PassthroughHUDWindow.m; sourceTree = "<group>"; };
+		A00000000000000000000144 /* FloatingHUDViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FloatingHUDViewController.h; sourceTree = "<group>"; };
+		A00000000000000000000145 /* FloatingHUDViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FloatingHUDViewController.m; sourceTree = "<group>"; };
+		A00000000000000000000146 /* ConfigurationViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ConfigurationViewController.h; sourceTree = "<group>"; };
+		A00000000000000000000147 /* ConfigurationViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ConfigurationViewController.m; sourceTree = "<group>"; };
+		A00000000000000000000148 /* AppPickerViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppPickerViewController.h; sourceTree = "<group>"; };
+		A00000000000000000000149 /* AppPickerViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppPickerViewController.m; sourceTree = "<group>"; };
+		A00000000000000000000150 /* ArcLaunchSharedStorage.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArcLaunchSharedStorage.h; sourceTree = "<group>"; };
+		A00000000000000000000151 /* ArcLaunchSharedStorage.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArcLaunchSharedStorage.m; sourceTree = "<group>"; };
+		A00000000000000000000152 /* ShortcutArrangementViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShortcutArrangementViewController.h; sourceTree = "<group>"; };
+		A00000000000000000000153 /* ShortcutArrangementViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ShortcutArrangementViewController.m; sourceTree = "<group>"; };
+		A00000000000000000000155 /* ArcLaunchFrontBoardPrivate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArcLaunchFrontBoardPrivate.h; sourceTree = "<group>"; };
+		A00000000000000000000156 /* FloatingAppSceneHost.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FloatingAppSceneHost.h; sourceTree = "<group>"; };
+		A00000000000000000000157 /* FloatingAppSceneHost.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FloatingAppSceneHost.m; sourceTree = "<group>"; };
+		A00000000000000000000158 /* FloatingAppWindowManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FloatingAppWindowManager.h; sourceTree = "<group>"; };
+		A00000000000000000000159 /* FloatingAppWindowManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FloatingAppWindowManager.m; sourceTree = "<group>"; };
+		A00000000000000000000160 /* ArcLaunchSettingsStoreTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArcLaunchSettingsStoreTests.m; sourceTree = "<group>"; };
+		A00000000000000000000161 /* ArcLaunchFanLayoutTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArcLaunchFanLayoutTests.m; sourceTree = "<group>"; };
+		A00000000000000000000162 /* SystemApplicationBridgeTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SystemApplicationBridgeTests.m; sourceTree = "<group>"; };
+		A00000000000000000000170 /* ArcLaunch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ArcLaunch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000000000171 /* ArcLaunchTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ArcLaunchTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000000000180 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		A00000000000000000000181 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		A00000000000000000000182 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
+		A00000000000000000000190 /* ArcLaunchUpdateChecker.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArcLaunchUpdateChecker.h; sourceTree = "<group>"; };
+		A00000000000000000000191 /* ArcLaunchUpdateChecker.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArcLaunchUpdateChecker.m; sourceTree = "<group>"; };
+		A00000000000000000000192 /* ArcLaunchUpdateCheckerTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArcLaunchUpdateCheckerTests.m; sourceTree = "<group>"; };
+		A00000000000000000000193 /* ArcLaunchFloatingWindowLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArcLaunchFloatingWindowLayout.h; sourceTree = "<group>"; };
+		A00000000000000000000194 /* ArcLaunchFloatingWindowLayout.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArcLaunchFloatingWindowLayout.m; sourceTree = "<group>"; };
+		A00000000000000000000195 /* FloatingAppWindowView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FloatingAppWindowView.h; sourceTree = "<group>"; };
+		A00000000000000000000196 /* FloatingAppWindowView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FloatingAppWindowView.m; sourceTree = "<group>"; };
+		A00000000000000000000197 /* ArcLaunchLayerHitTesting.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArcLaunchLayerHitTesting.h; sourceTree = "<group>"; };
+		A00000000000000000000198 /* ArcLaunchFloatingWindowLayoutTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArcLaunchFloatingWindowLayoutTests.m; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A00000000000000000000341 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00000000000000000000230 /* UIKit.framework in Frameworks */,
+				A00000000000000000000231 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A00000000000000000000344 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00000000000000000000250 /* XCTest.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A00000000000000000000030 = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000031 /* ArcLaunch */,
+				A00000000000000000000035 /* ArcLaunchTests */,
+				A00000000000000000000037 /* Frameworks */,
+				A00000000000000000000036 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A00000000000000000000031 /* ArcLaunch */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000101 /* main.m */,
+				A00000000000000000000102 /* AppDelegate.h */,
+				A00000000000000000000103 /* AppDelegate.m */,
+				A00000000000000000000032 /* Models */,
+				A00000000000000000000033 /* Services */,
+				A00000000000000000000034 /* Views */,
+				A00000000000000000000112 /* Assets.xcassets */,
+				A00000000000000000000110 /* Info.plist */,
+				A00000000000000000000111 /* ArcLaunch.entitlements */,
+			);
+			path = ArcLaunch;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000032 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000120 /* ArcLaunchSettings.h */,
+				A00000000000000000000121 /* ArcLaunchSettings.m */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000033 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000122 /* ArcLaunchSettingsStore.h */,
+				A00000000000000000000123 /* ArcLaunchSettingsStore.m */,
+				A00000000000000000000130 /* SystemApplicationBridge.h */,
+				A00000000000000000000131 /* SystemApplicationBridge.m */,
+				A00000000000000000000132 /* HUDSceneCoordinator.h */,
+				A00000000000000000000133 /* HUDSceneCoordinator.m */,
+				A00000000000000000000134 /* HUDTouchEventBridge.h */,
+				A00000000000000000000135 /* HUDTouchEventBridge.m */,
+				A00000000000000000000150 /* ArcLaunchSharedStorage.h */,
+				A00000000000000000000151 /* ArcLaunchSharedStorage.m */,
+				A00000000000000000000190 /* ArcLaunchUpdateChecker.h */,
+				A00000000000000000000191 /* ArcLaunchUpdateChecker.m */,
+				A00000000000000000000155 /* ArcLaunchFrontBoardPrivate.h */,
+				A00000000000000000000156 /* FloatingAppSceneHost.h */,
+				A00000000000000000000157 /* FloatingAppSceneHost.m */,
+				A00000000000000000000158 /* FloatingAppWindowManager.h */,
+				A00000000000000000000159 /* FloatingAppWindowManager.m */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000034 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000140 /* ArcLaunchFanLayout.h */,
+				A00000000000000000000141 /* ArcLaunchFanLayout.m */,
+				A00000000000000000000142 /* PassthroughHUDWindow.h */,
+				A00000000000000000000143 /* PassthroughHUDWindow.m */,
+				A00000000000000000000144 /* FloatingHUDViewController.h */,
+				A00000000000000000000145 /* FloatingHUDViewController.m */,
+				A00000000000000000000146 /* ConfigurationViewController.h */,
+				A00000000000000000000147 /* ConfigurationViewController.m */,
+				A00000000000000000000148 /* AppPickerViewController.h */,
+				A00000000000000000000149 /* AppPickerViewController.m */,
+				A00000000000000000000152 /* ShortcutArrangementViewController.h */,
+				A00000000000000000000153 /* ShortcutArrangementViewController.m */,
+				A00000000000000000000193 /* ArcLaunchFloatingWindowLayout.h */,
+				A00000000000000000000194 /* ArcLaunchFloatingWindowLayout.m */,
+				A00000000000000000000195 /* FloatingAppWindowView.h */,
+				A00000000000000000000196 /* FloatingAppWindowView.m */,
+				A00000000000000000000197 /* ArcLaunchLayerHitTesting.h */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000035 /* ArcLaunchTests */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000160 /* ArcLaunchSettingsStoreTests.m */,
+				A00000000000000000000161 /* ArcLaunchFanLayoutTests.m */,
+				A00000000000000000000162 /* SystemApplicationBridgeTests.m */,
+				A00000000000000000000192 /* ArcLaunchUpdateCheckerTests.m */,
+				A00000000000000000000198 /* ArcLaunchFloatingWindowLayoutTests.m */,
+			);
+			path = ArcLaunchTests;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000036 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000170 /* ArcLaunch.app */,
+				A00000000000000000000171 /* ArcLaunchTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000037 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000180 /* UIKit.framework */,
+				A00000000000000000000181 /* Foundation.framework */,
+				A00000000000000000000182 /* XCTest.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A00000000000000000000010 /* ArcLaunch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A00000000000000000000331 /* Build configuration list for PBXNativeTarget "ArcLaunch" */;
+			buildPhases = (
+				A00000000000000000000340 /* Sources */,
+				A00000000000000000000341 /* Frameworks */,
+				A00000000000000000000342 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ArcLaunch;
+			productName = ArcLaunch;
+			productReference = A00000000000000000000170 /* ArcLaunch.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A00000000000000000000020 /* ArcLaunchTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A00000000000000000000332 /* Build configuration list for PBXNativeTarget "ArcLaunchTests" */;
+			buildPhases = (
+				A00000000000000000000343 /* Sources */,
+				A00000000000000000000344 /* Frameworks */,
+				A00000000000000000000345 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A00000000000000000000352 /* PBXTargetDependency */,
+			);
+			name = ArcLaunchTests;
+			productName = ArcLaunchTests;
+			productReference = A00000000000000000000171 /* ArcLaunchTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A00000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					A00000000000000000000010 = { CreatedOnToolsVersion = 16.0; };
+					A00000000000000000000020 = { CreatedOnToolsVersion = 16.0; TestTargetID = A00000000000000000000010; };
+				};
+			};
+			buildConfigurationList = A00000000000000000000330 /* Build configuration list for PBXProject "ArcLaunch" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = zh-Hans;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				zh-Hans,
+				en,
+				Base,
+			);
+			mainGroup = A00000000000000000000030;
+			productRefGroup = A00000000000000000000036 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A00000000000000000000010 /* ArcLaunch */,
+				A00000000000000000000020 /* ArcLaunchTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A00000000000000000000342 /* Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = ( A00000000000000000000216 /* Assets.xcassets in Resources */, ); runOnlyForDeploymentPostprocessing = 0; };
+		A00000000000000000000345 /* Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = ( ); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A00000000000000000000340 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00000000000000000000200 /* main.m in Sources */,
+				A00000000000000000000201 /* AppDelegate.m in Sources */,
+				A00000000000000000000205 /* ArcLaunchSettings.m in Sources */,
+				A00000000000000000000206 /* ArcLaunchSettingsStore.m in Sources */,
+				A00000000000000000000207 /* SystemApplicationBridge.m in Sources */,
+				A00000000000000000000208 /* HUDSceneCoordinator.m in Sources */,
+				A00000000000000000000214 /* HUDTouchEventBridge.m in Sources */,
+				A00000000000000000000215 /* ArcLaunchSharedStorage.m in Sources */,
+				A00000000000000000000260 /* ArcLaunchUpdateChecker.m in Sources */,
+				A00000000000000000000209 /* ArcLaunchFanLayout.m in Sources */,
+				A00000000000000000000210 /* PassthroughHUDWindow.m in Sources */,
+				A00000000000000000000211 /* FloatingHUDViewController.m in Sources */,
+				A00000000000000000000212 /* ConfigurationViewController.m in Sources */,
+				A00000000000000000000213 /* AppPickerViewController.m in Sources */,
+				A00000000000000000000217 /* ShortcutArrangementViewController.m in Sources */,
+				A00000000000000000000218 /* FloatingAppSceneHost.m in Sources */,
+				A00000000000000000000219 /* FloatingAppWindowManager.m in Sources */,
+				A00000000000000000000220 /* ArcLaunchFloatingWindowLayout.m in Sources */,
+				A00000000000000000000221 /* FloatingAppWindowView.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A00000000000000000000343 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00000000000000000000240 /* ArcLaunchSettingsStoreTests.m in Sources */,
+				A00000000000000000000241 /* ArcLaunchFanLayoutTests.m in Sources */,
+				A00000000000000000000242 /* SystemApplicationBridgeTests.m in Sources */,
+				A00000000000000000000261 /* ArcLaunchUpdateCheckerTests.m in Sources */,
+				A00000000000000000000262 /* ArcLaunchFloatingWindowLayoutTests.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A00000000000000000000352 /* PBXTargetDependency */ = { isa = PBXTargetDependency; target = A00000000000000000000010 /* ArcLaunch */; targetProxy = A00000000000000000000351 /* PBXContainerItemProxy */; };
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		A00000000000000000000300 /* Debug */ = { isa = XCBuildConfiguration; buildSettings = { CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; IPHONEOS_DEPLOYMENT_TARGET = 15.0; SDKROOT = iphoneos; }; name = Debug; };
+		A00000000000000000000301 /* Release */ = { isa = XCBuildConfiguration; buildSettings = { CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; IPHONEOS_DEPLOYMENT_TARGET = 15.0; SDKROOT = iphoneos; }; name = Release; };
+		A00000000000000000000310 /* Debug */ = { isa = XCBuildConfiguration; buildSettings = { ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; CODE_SIGN_ENTITLEMENTS = ArcLaunch/ArcLaunch.entitlements; GCC_C_LANGUAGE_STANDARD = gnu17; HEADER_SEARCH_PATHS = ( "$(SRCROOT)/ArcLaunch/Models", "$(SRCROOT)/ArcLaunch/Services", "$(SRCROOT)/ArcLaunch/Views", ); INFOPLIST_FILE = ArcLaunch/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 15.0; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = com.kleinersource.arclaunch; PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
+		A00000000000000000000311 /* Release */ = { isa = XCBuildConfiguration; buildSettings = { ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; CODE_SIGN_ENTITLEMENTS = ArcLaunch/ArcLaunch.entitlements; GCC_C_LANGUAGE_STANDARD = gnu17; HEADER_SEARCH_PATHS = ( "$(SRCROOT)/ArcLaunch/Models", "$(SRCROOT)/ArcLaunch/Services", "$(SRCROOT)/ArcLaunch/Views", ); INFOPLIST_FILE = ArcLaunch/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 15.0; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = com.kleinersource.arclaunch; PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Release; };
+		A00000000000000000000320 /* Debug */ = { isa = XCBuildConfiguration; buildSettings = { BUNDLE_LOADER = "$(TEST_HOST)"; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; HEADER_SEARCH_PATHS = ( "$(SRCROOT)/ArcLaunch/Models", "$(SRCROOT)/ArcLaunch/Services", "$(SRCROOT)/ArcLaunch/Views", ); IPHONEOS_DEPLOYMENT_TARGET = 15.0; PRODUCT_BUNDLE_IDENTIFIER = com.kleinersource.arclaunch.tests; PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = "1,2"; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ArcLaunch.app/ArcLaunch"; }; name = Debug; };
+		A00000000000000000000321 /* Release */ = { isa = XCBuildConfiguration; buildSettings = { BUNDLE_LOADER = "$(TEST_HOST)"; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; HEADER_SEARCH_PATHS = ( "$(SRCROOT)/ArcLaunch/Models", "$(SRCROOT)/ArcLaunch/Services", "$(SRCROOT)/ArcLaunch/Views", ); IPHONEOS_DEPLOYMENT_TARGET = 15.0; PRODUCT_BUNDLE_IDENTIFIER = com.kleinersource.arclaunch.tests; PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = "1,2"; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ArcLaunch.app/ArcLaunch"; }; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A00000000000000000000330 /* Build configuration list for PBXProject "ArcLaunch" */ = { isa = XCConfigurationList; buildConfigurations = ( A00000000000000000000300 /* Debug */, A00000000000000000000301 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A00000000000000000000331 /* Build configuration list for PBXNativeTarget "ArcLaunch" */ = { isa = XCConfigurationList; buildConfigurations = ( A00000000000000000000310 /* Debug */, A00000000000000000000311 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A00000000000000000000332 /* Build configuration list for PBXNativeTarget "ArcLaunchTests" */ = { isa = XCConfigurationList; buildConfigurations = ( A00000000000000000000320 /* Debug */, A00000000000000000000321 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = A00000000000000000000001 /* Project object */;
+}

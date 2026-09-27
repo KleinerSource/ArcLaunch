@@ -1,4 +1,4 @@
-name: Build KSBall
+name: Build ArcLaunch
 
 on:
   push:
@@ -41,11 +41,11 @@ jobs:
           set -euo pipefail
           version="$(python3 Scripts/bump_version.py --auto)"
           if [[ "$GITHUB_REF_NAME" == "dev" ]]; then
-            /usr/libexec/PlistBuddy -c 'Set :KSBallUpdateChannel dev' KSBall/Info.plist
-            /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'KSBall dev'" KSBall/Info.plist
+            /usr/libexec/PlistBuddy -c 'Set :ArcLaunchUpdateChannel dev' ArcLaunch/Info.plist
+            /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'ArcLaunch dev'" ArcLaunch/Info.plist
           else
-            /usr/libexec/PlistBuddy -c 'Set :KSBallUpdateChannel latest' KSBall/Info.plist
-            /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName KSBall" KSBall/Info.plist
+            /usr/libexec/PlistBuddy -c 'Set :ArcLaunchUpdateChannel latest' ArcLaunch/Info.plist
+            /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName ArcLaunch" ArcLaunch/Info.plist
           fi
           echo "构建版本：${version}"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
@@ -59,7 +59,7 @@ jobs:
       - name: Generate app icon if missing
         run: |
           set -euo pipefail
-          icon_path="KSBall/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
+          icon_path="ArcLaunch/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
           if [[ ! -f "$icon_path" ]]; then
             python3 Scripts/generate_app_icon.py
           fi
@@ -67,12 +67,12 @@ jobs:
 
       - name: Build Release app
         env:
-          DERIVED_DATA: ${{ runner.temp }}/KSBallDerivedData
+          DERIVED_DATA: ${{ runner.temp }}/ArcLaunchDerivedData
         run: |
           set -o pipefail
           xcodebuild \
-            -project KSBall.xcodeproj \
-            -scheme KSBall \
+            -project ArcLaunch.xcodeproj \
+            -scheme ArcLaunch \
             -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
@@ -91,11 +91,11 @@ jobs:
       - name: Package TrollStore TIPA
         id: package
         env:
-          DERIVED_DATA: ${{ runner.temp }}/KSBallDerivedData
+          DERIVED_DATA: ${{ runner.temp }}/ArcLaunchDerivedData
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
-          app_path="$DERIVED_DATA/Build/Products/Release-iphoneos/KSBall.app"
+          app_path="$DERIVED_DATA/Build/Products/Release-iphoneos/ArcLaunch.app"
           test -d "$app_path"
           built_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_path/Info.plist")+$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$app_path/Info.plist")"
           if [[ "$built_version" != "$VERSION" ]]; then
@@ -113,18 +113,18 @@ jobs:
           test -f "$app_path/Assets.car" || { echo "::error title=Missing app icon::Assets.car was not produced"; exit 1; }
           ls "$app_path"/AppIcon*.png >/dev/null 2>&1 || { echo "::error title=Missing app icon::No AppIcon*.png in the app bundle"; exit 1; }
           echo "App icon: $icon_name"; ls "$app_path"/AppIcon*.png
-          entitlements_path="$GITHUB_WORKSPACE/KSBall/KSBall.entitlements"
+          entitlements_path="$GITHUB_WORKSPACE/ArcLaunch/ArcLaunch.entitlements"
           test -f "$entitlements_path"
           mkdir -p artifact/Payload
           echo "Signing $executable_name with ldid-procursus"
           ldid -M -S"$entitlements_path" "$app_path"
           echo 'Exporting signed entitlements'
-          ldid -e "$executable_path" > artifact/KSBall.entitlements.plist
-          plutil -lint artifact/KSBall.entitlements.plist
+          ldid -e "$executable_path" > artifact/ArcLaunch.entitlements.plist
+          plutil -lint artifact/ArcLaunch.entitlements.plist
           assert_true_entitlement() {
             local key="$1"
             local value
-            if ! value="$(/usr/libexec/PlistBuddy -c "Print :$key" artifact/KSBall.entitlements.plist)"; then
+            if ! value="$(/usr/libexec/PlistBuddy -c "Print :$key" artifact/ArcLaunch.entitlements.plist)"; then
               echo "::error title=Missing entitlement::$key was not exported by ldid"
               return 1
             fi
@@ -154,13 +154,13 @@ jobs:
           assert_true_entitlement 'com.apple.frontboard.launchapplications'
           assert_true_entitlement 'com.apple.runningboard.launchprocess'
           assert_true_entitlement 'com.apple.runningboard.terminateprocess'
-          signed_app_identifier="$(/usr/libexec/PlistBuddy -c 'Print :application-identifier' artifact/KSBall.entitlements.plist)"
-          if [[ "$signed_app_identifier" != 'com.kleinersource.ksball' ]]; then
-            echo "::error title=Invalid application identifier::Expected com.kleinersource.ksball, got $signed_app_identifier"
+          signed_app_identifier="$(/usr/libexec/PlistBuddy -c 'Print :application-identifier' artifact/ArcLaunch.entitlements.plist)"
+          if [[ "$signed_app_identifier" != 'com.kleinersource.arclaunch' ]]; then
+            echo "::error title=Invalid application identifier::Expected com.kleinersource.arclaunch, got $signed_app_identifier"
             exit 1
           fi
-          artifact_name="KSBall_${VERSION}"
-          cp -R "$app_path" artifact/Payload/KSBall.app
+          artifact_name="ArcLaunch_${VERSION}"
+          cp -R "$app_path" artifact/Payload/ArcLaunch.app
           ditto -c -k --sequesterRsrc --keepParent artifact/Payload "artifact/${artifact_name}.tipa"
           (cd artifact && shasum -a 256 "${artifact_name}.tipa" | tee "${artifact_name}.tipa.sha256")
           echo "artifact_name=${artifact_name}" >> "$GITHUB_OUTPUT"
@@ -172,7 +172,7 @@ jobs:
           path: |
             artifact/${{ steps.package.outputs.artifact_name }}.tipa
             artifact/${{ steps.package.outputs.artifact_name }}.tipa.sha256
-            artifact/KSBall.entitlements.plist
+            artifact/ArcLaunch.entitlements.plist
             xcodebuild.log
           if-no-files-found: error
           retention-days: 14
@@ -186,7 +186,7 @@ jobs:
     permissions:
       contents: write
     env:
-      # 应用内的更新检测读取这个滚动 Release，改名时要同步修改 KSBallUpdateChecker.m。
+      # 应用内的更新检测读取这个滚动 Release，改名时要同步修改 ArcLaunchUpdateChecker.m。
       RELEASE_TAG: ${{ github.ref_name == 'main' && 'latest' || 'dev' }}
       VERSION: ${{ needs.build.outputs.version }}
 
@@ -211,7 +211,7 @@ jobs:
           python3 Scripts/bump_version.py --set "$VERSION"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add KSBall/Info.plist
+          git add ArcLaunch/Info.plist
           git commit -m "chore: bump build metadata to ${VERSION} [skip ci]"
           git push origin "HEAD:refs/heads/${GITHUB_REF_NAME}"
 
@@ -239,7 +239,7 @@ jobs:
             "$tipa_path" \
             "$checksum_path" \
             "$build_log_path" \
-            --title "KSBall ${VERSION}" \
+            --title "ArcLaunch ${VERSION}" \
             --prerelease \
             --latest=false \
             --target "$GITHUB_SHA" \

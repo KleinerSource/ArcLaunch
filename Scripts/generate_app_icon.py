@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""生成 KSBall 应用图标（1024×1024，无透明通道）。
+"""生成 ArcLaunch 应用图标（1024×1024，无透明通道）。
 
 只依赖 Python 标准库：用有符号距离场绘制图形并做边缘抗锯齿，再手工编码为 PNG。
 图案取自应用本身：屏幕右侧的细长悬浮条，以及围绕它展开的两圈圆形应用图标。
@@ -13,7 +13,7 @@ import struct
 import zlib
 
 SIZE = 1024
-OUTPUT = os.path.join(os.path.dirname(__file__), "..", "KSBall", "Assets.xcassets", "AppIcon.appiconset", "AppIcon.png")
+OUTPUT = os.path.join(os.path.dirname(__file__), "..", "ArcLaunch", "Assets.xcassets", "AppIcon.appiconset", "AppIcon.png")
 
 TOP_COLOR = (0x24, 0x33, 0x5C)
 BOTTOM_COLOR = (0x0A, 0x0F, 0x1F)
