@@ -2,6 +2,9 @@ name: Build ArcLaunch Keyboard Bridge
 
 on:
   push:
+    branches-ignore:
+      - main
+      - dev
     paths:
       - "ArcLaunch/Services/FloatingAppSceneHost.m"
       - "Scripts/bump_version.py"
@@ -14,6 +17,12 @@ on:
       - "KeyboardBridgeTweak/**"
       - ".github/workflows/build-keyboard-bridge.yml"
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      package_version:
+        description: ArcLaunch release version to use for the Debian packages.
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -42,11 +51,17 @@ jobs:
           echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
 
       - name: Build arm64 and arm64e packages for all jailbreak layouts
+        env:
+          RELEASE_VERSION: ${{ inputs.package_version }}
         run: |
           set -euo pipefail
           artifact_dir="$RUNNER_TEMP/ArcLaunchKeyboardBridge"
           mkdir -p "$artifact_dir"
-          version="$(python3 Scripts/bump_version.py --auto)"
+          if [[ -n "$RELEASE_VERSION" ]]; then
+            version="$RELEASE_VERSION"
+          else
+            version="$(python3 Scripts/bump_version.py --auto)"
+          fi
           echo "Keyboard bridge package version: $version"
 
           build_package() {

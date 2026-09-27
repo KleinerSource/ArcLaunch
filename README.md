@@ -59,7 +59,7 @@ build 号每次构建都 +1。本地运行 `python3 Scripts/bump_version.py` 可
 
 ## GitHub Actions
 
-推送、拉取请求和手动触发都会运行 `.github/workflows/build-ios.yml`：先测试版本策略并计算本次版本号，再用 macOS runner 构建未签名的 TrollStore `.tipa`，上传 `ArcLaunch_<版本>.tipa`、SHA-256、导出的 entitlements 和 `xcodebuild.log` 工件；最终 TrollStore 签名仍在下载工件后执行。
+推送、拉取请求和手动触发都会运行 `.github/workflows/build-ios.yml`：先测试版本策略并计算本次版本号，再用 macOS runner 构建未签名的 TrollStore `.tipa`，上传 `ArcLaunch_<版本>.tipa`、SHA-256、导出的 entitlements 和 `xcodebuild.log` 工件。dev 分支的 `testing` Release 还会附带同版本的 `ArcLaunchKeyboardBridge-arm64.deb` 与 `ArcLaunchKeyboardBridge-arm64e.deb`；main 分支的 `latest` Release 保持标准版内容。最终 TrollStore 签名仍在下载工件后执行。
 
 `main` 和 `dev` 分支的推送与手动运行在构建成功后还会：
 

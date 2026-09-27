@@ -177,11 +177,21 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  keyboard_bridge:
+    name: Build keyboard bridge packages
+    if: github.ref == 'refs/heads/dev'
+    needs: build
+    uses: ./.github/workflows/build-keyboard-bridge.yml
+    with:
+      package_version: ${{ needs.build.outputs.version }}
+    permissions:
+      contents: read
+
   release:
     name: Publish rolling release
-    needs: build
+    needs: [build, keyboard_bridge]
     # main 发布标准版 latest，dev 分支发布开发版 testing；其它分支与拉取请求只产出 Actions 工件。
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && needs.build.result == 'success' && (needs.keyboard_bridge.result == 'success' || needs.keyboard_bridge.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -202,6 +212,20 @@ jobs:
         with:
           name: ${{ needs.build.outputs.artifact_name }}
           path: release
+
+      - name: Download arm64 keyboard bridge
+        if: github.ref == 'refs/heads/dev'
+        uses: actions/download-artifact@v8
+        with:
+          name: ArcLaunchKeyboardBridge-arm64
+          path: release/keyboard-bridge/arm64
+
+      - name: Download arm64e keyboard bridge
+        if: github.ref == 'refs/heads/dev'
+        uses: actions/download-artifact@v8
+        with:
+          name: ArcLaunchKeyboardBridge-arm64e
+          path: release/keyboard-bridge/arm64e
 
       # 构建成功后才写回版本号，失败或被取消的构建不会占用版本号。
       # 提交带 [skip ci]，而且 GITHUB_TOKEN 的推送本身也不会触发新的运行。
@@ -228,6 +252,14 @@ jobs:
           test -n "$tipa_path"
           test -n "$checksum_path"
           test -n "$build_log_path"
+          release_assets=("$tipa_path" "$checksum_path" "$build_log_path")
+          if [[ "$GITHUB_REF_NAME" == "dev" ]]; then
+            keyboard_bridge_arm64="$(find release/keyboard-bridge/arm64 -type f -name 'ArcLaunchKeyboardBridge-arm64.deb' -print -quit)"
+            keyboard_bridge_arm64e="$(find release/keyboard-bridge/arm64e -type f -name 'ArcLaunchKeyboardBridge-arm64e.deb' -print -quit)"
+            test -n "$keyboard_bridge_arm64"
+            test -n "$keyboard_bridge_arm64e"
+            release_assets+=("$keyboard_bridge_arm64" "$keyboard_bridge_arm64e")
+          fi
           notes_file="$(mktemp)"
           trap 'rm -f "$notes_file"' EXIT
           # 必须在删除旧 Release 之前生成：说明以旧 Release 指向的提交为起点。
@@ -235,10 +267,7 @@ jobs:
           cat "$notes_file"
           # 删除后重建，tag 才会移到本次提交；gh release edit --target 不会移动已存在的 tag。
           gh release delete "$RELEASE_TAG" --yes --cleanup-tag || true
-          gh release create "$RELEASE_TAG" \
-            "$tipa_path" \
-            "$checksum_path" \
-            "$build_log_path" \
+          gh release create "$RELEASE_TAG" "${release_assets[@]}" \
             --title "ArcLaunch ${VERSION}" \
             --prerelease \
             --latest=false \

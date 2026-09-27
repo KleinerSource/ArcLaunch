@@ -8,7 +8,7 @@ ArcLaunch 通过 Darwin 通知 `com.kleinersource.arclaunch.keyboardbridge.<bund
 
 ## 安装
 
-1. 在 GitHub Actions 中只按设备架构下载 `ArcLaunchKeyboardBridge-arm64` 或 `ArcLaunchKeyboardBridge-arm64e` artifact；越狱类型由安装脚本处理。用 Relaxin 的包管理器安装。
+1. 从 `testing`（dev）GitHub Release 下载 `ArcLaunchKeyboardBridge-arm64.deb` 或 `ArcLaunchKeyboardBridge-arm64e.deb`；插件包只随开发版发布。越狱类型由安装脚本处理。用 Relaxin 的包管理器安装。
 2. 确认 ElleKit 对 ArcLaunch 和需要悬浮运行的应用启用了 tweak 注入。
 3. 重启 ArcLaunch 和已运行的 guest 应用。
 
