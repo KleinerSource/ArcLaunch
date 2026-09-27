@@ -17,9 +17,11 @@ typedef void (^ArcLaunchFloatingSceneCompletion)(BOOL success, NSString * _Nulla
 /// 被托管的应用进程退出时在主线程回调。
 @property (nonatomic, copy, nullable) dispatch_block_t processExitHandler;
 
-- (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier;
+- (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier parentViewController:(UIViewController *)parentViewController;
 - (instancetype)init NS_UNAVAILABLE;
 - (void)startWithCompletion:(ArcLaunchFloatingSceneCompletion)completion;
+/// 将 scene view 挂到宿主窗口后调用，完成 UIKit 子控制器关系。
+- (void)didAttachPresentationView;
 - (void)updateUserInterfaceStyle:(UIUserInterfaceStyle)userInterfaceStyle;
 /// 销毁场景；应用是由本宿主启动的则一并结束进程。
 - (void)invalidate;

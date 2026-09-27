@@ -9,7 +9,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 #define ArcLaunchPrivateClass(name) ((Class)NSClassFromString(@#name))
 
-@class FBScene, RBSProcessIdentity, UIScenePresentationManager, UIMutableScenePresentationContext;
+@class FBScene, RBSProcessIdentity, UIApplicationSceneSpecification, UIScenePresentationManager, UIMutableScenePresentationContext;
 
 @interface BSTransaction : NSObject
 - (void)begin;
@@ -64,6 +64,21 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface FBSSceneSpecification : NSObject
 + (instancetype)specification;
+@end
+
+API_AVAILABLE(ios(17.4))
+@interface _UISceneHostingControllerAdvancedConfiguration : NSObject
+@property (nonatomic, strong) UIApplicationSceneSpecification *sceneSpecification;
+@property (nonatomic, copy) NSOrderedSet *additionalExtensions API_AVAILABLE(ios(18.0));
+- (instancetype)initWithProcessIdentity:(RBSProcessIdentity *)identity;
+@end
+
+API_AVAILABLE(ios(17.4))
+@interface _UISceneHostingController : NSObject
+- (instancetype)initWithAdvancedConfiguration:(_UISceneHostingControllerAdvancedConfiguration *)configuration API_AVAILABLE(ios(17.4));
+- (UIViewController *)sceneViewController;
+- (nullable id)_eventDeferringComponent API_AVAILABLE(ios(17.4));
+- (void)invalidate;
 @end
 
 @interface FBSMutableSceneDefinition : NSObject

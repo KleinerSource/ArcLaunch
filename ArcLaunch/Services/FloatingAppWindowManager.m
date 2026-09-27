@@ -27,6 +27,7 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
 
 @interface FloatingAppWindowManager () <FloatingAppWindowViewDelegate>
 @property (nonatomic, strong) UIView *containerView;
+@property (nonatomic, weak) UIViewController *parentViewController;
 @property (nonatomic, strong) SystemApplicationBridge *applicationBridge;
 @property (nonatomic, strong) NSMutableArray<ArcLaunchFloatingWindowEntry *> *entries;
 /// 收纳区中的窗口，按收起的先后顺序从上往下排列。
@@ -48,10 +49,11 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
 
 @implementation FloatingAppWindowManager
 
-- (instancetype)initWithContainerView:(UIView *)containerView applicationBridge:(SystemApplicationBridge *)applicationBridge {
+- (instancetype)initWithContainerView:(UIView *)containerView parentViewController:(UIViewController *)parentViewController applicationBridge:(SystemApplicationBridge *)applicationBridge {
     self = [super init];
     if (self) {
         _containerView = containerView;
+        _parentViewController = parentViewController;
         _applicationBridge = applicationBridge;
         _entries = [NSMutableArray array];
         _minimizedEntries = [NSMutableArray array];
@@ -223,7 +225,7 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
 }
 
 - (void)startHostForEntry:(ArcLaunchFloatingWindowEntry *)entry {
-    FloatingAppSceneHost *host = [[FloatingAppSceneHost alloc] initWithBundleIdentifier:entry.bundleIdentifier];
+    FloatingAppSceneHost *host = [[FloatingAppSceneHost alloc] initWithBundleIdentifier:entry.bundleIdentifier parentViewController:self.parentViewController];
     host.sceneSafeAreaInsets = [self safeAreaInsets];
     host.userInterfaceStyle = self.userInterfaceStyle;
     __weak typeof(self) weakSelf = self;
@@ -239,6 +241,7 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
         }
         if (success) {
             [strongEntry.windowView setPresentationView:host.presentationView];
+            [host didAttachPresentationView];
             return;
         }
         NSString *message = [NSString stringWithFormat:@"无法打开：%@", failureReason ?: @"未知原因"];

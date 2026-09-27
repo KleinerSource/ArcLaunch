@@ -14,11 +14,6 @@ static const CGFloat ArcLaunchDragActivationDistance = 8.0;
 static const CGFloat ArcLaunchPreviewIconSize = 108.0;
 // 悬浮窗口模式标识相对当前图标的尺寸。
 static const CGFloat ArcLaunchFloatingBadgeRatio = 0.38;
-static const CGFloat ArcLaunchFixedTriggerMinimumHorizontalInset = 28.0;
-static const CGFloat ArcLaunchFixedTriggerMinimumTopInset = 32.0;
-static const CGFloat ArcLaunchFixedTriggerMinimumBottomInset = 24.0;
-static const CGFloat ArcLaunchFixedTriggerSafeAreaPadding = 8.0;
-static const CGFloat ArcLaunchFixedTriggerBottomSafeAreaPadding = 2.0;
 // 配置变化后扇形菜单与触摸范围的预览停留时间。
 static const NSTimeInterval ArcLaunchMenuPreviewDuration = 1.6;
 static const char * const ArcLaunchLockStateNotification = "com.apple.springboard.lockstate";
@@ -149,7 +144,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
     [self.view addSubview:self.floatingContainerView];
     if (ArcLaunchFloatingAppHostingAvailable()) {
         __weak typeof(self) weakSelf = self;
-        self.floatingWindowManager = [[FloatingAppWindowManager alloc] initWithContainerView:self.floatingContainerView applicationBridge:self.applicationBridge];
+        self.floatingWindowManager = [[FloatingAppWindowManager alloc] initWithContainerView:self.floatingContainerView parentViewController:self applicationBridge:self.applicationBridge];
         self.floatingWindowManager.userInterfaceStyle = [self systemAppearance] == ArcLaunchResolvedAppearanceDark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
         self.floatingWindowManager.handleStyle = self.settingsStore.settings.handleStyle;
         self.floatingWindowManager.feedbackHandler = ^(NSString *message) {
@@ -442,13 +437,8 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
         BOOL left = corner == ArcLaunchFixedTriggerCornerTopLeft || corner == ArcLaunchFixedTriggerCornerBottomLeft;
         BOOL top = corner == ArcLaunchFixedTriggerCornerTopLeft || corner == ArcLaunchFixedTriggerCornerTopRight;
         CGFloat diameter = settings.handleTouchRadius * 2.0;
-        UIEdgeInsets safeAreaInsets = self.view.safeAreaInsets;
-        CGFloat leftInset = MAX(ArcLaunchFixedTriggerMinimumHorizontalInset, safeAreaInsets.left + ArcLaunchFixedTriggerSafeAreaPadding);
-        CGFloat rightInset = MAX(ArcLaunchFixedTriggerMinimumHorizontalInset, safeAreaInsets.right + ArcLaunchFixedTriggerSafeAreaPadding);
-        CGFloat topInset = MAX(ArcLaunchFixedTriggerMinimumTopInset, safeAreaInsets.top + ArcLaunchFixedTriggerSafeAreaPadding);
-        CGFloat bottomInset = MAX(ArcLaunchFixedTriggerMinimumBottomInset, safeAreaInsets.bottom + ArcLaunchFixedTriggerBottomSafeAreaPadding);
-        CGFloat x = left ? leftInset + settings.fixedTriggerHorizontalInset : CGRectGetWidth(bounds) - rightInset - settings.fixedTriggerHorizontalInset - diameter;
-        CGFloat y = top ? topInset + settings.fixedTriggerVerticalInset : CGRectGetHeight(bounds) - bottomInset - settings.fixedTriggerVerticalInset - diameter;
+        CGFloat x = left ? settings.fixedTriggerHorizontalInset : CGRectGetWidth(bounds) - settings.fixedTriggerHorizontalInset - diameter;
+        CGFloat y = top ? settings.fixedTriggerVerticalInset : CGRectGetHeight(bounds) - settings.fixedTriggerVerticalInset - diameter;
         triggerView.frame = CGRectMake(x, y, diameter, diameter);
         triggerView.layer.cornerRadius = diameter / 2.0;
         triggerView.clipsToBounds = YES;

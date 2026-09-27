@@ -17,7 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic) UIUserInterfaceStyle userInterfaceStyle;
 @property (nonatomic) ArcLaunchHandleStyle handleStyle;
 
-- (instancetype)initWithContainerView:(UIView *)containerView applicationBridge:(SystemApplicationBridge *)applicationBridge;
+- (instancetype)initWithContainerView:(UIView *)containerView parentViewController:(UIViewController *)parentViewController applicationBridge:(SystemApplicationBridge *)applicationBridge;
 - (instancetype)init NS_UNAVAILABLE;
 /// 以悬浮窗打开或切换应用；切换时当前展开的应用自动收进边栏。point 为弹出动画的起点（悬浮条位置）。
 - (void)openShortcut:(ArcLaunchShortcut *)shortcut icon:(nullable UIImage *)icon fromPoint:(CGPoint)point;

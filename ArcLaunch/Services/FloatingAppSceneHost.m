@@ -16,8 +16,11 @@ static BOOL ArcLaunchProcessIsAlive(pid_t processIdentifier) {
 
 @interface FloatingAppSceneHost ()
 @property (nonatomic, copy, readwrite) NSString *bundleIdentifier;
+@property (nonatomic, weak) UIViewController *parentViewController;
 @property (nonatomic, strong, readwrite, nullable) UIView *presentationView;
 @property (nonatomic, strong, nullable) _UIScenePresenter *presenter;
+@property (nonatomic, strong, nullable) _UISceneHostingController *hostingController;
+@property (nonatomic, strong, nullable) UIViewController *hostingViewController;
 @property (nonatomic, strong, nullable) FBApplicationProcessLaunchTransaction *launchTransaction;
 @property (nonatomic, copy, nullable) NSString *sceneIdentifier;
 @property (nonatomic, strong, nullable) dispatch_source_t processExitSource;
@@ -25,14 +28,18 @@ static BOOL ArcLaunchProcessIsAlive(pid_t processIdentifier) {
 @property (nonatomic) BOOL launchedByHost;
 @property (nonatomic) BOOL processExited;
 @property (nonatomic) BOOL invalidated;
+- (BOOL)createHostedSceneForProcessHandle:(RBSProcessHandle *)handle failureReason:(NSString **)failureReason API_AVAILABLE(ios(17.4));
+- (void)applyInitialSettingsToHostedScene:(FBScene *)scene;
+- (void)configureEventDeferringForHostingController:(_UISceneHostingController *)hostingController viewController:(UIViewController *)viewController;
 @end
 
 @implementation FloatingAppSceneHost
 
-- (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier {
+- (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier parentViewController:(UIViewController *)parentViewController {
     self = [super init];
     if (self) {
         _bundleIdentifier = [bundleIdentifier copy];
+        _parentViewController = parentViewController;
         _userInterfaceStyle = UIUserInterfaceStyleLight;
     }
     return self;
@@ -131,6 +138,14 @@ static BOOL ArcLaunchProcessIsAlive(pid_t processIdentifier) {
         self.processIdentifier = handle.pid;
         [[ArcLaunchPrivateClass(FBProcessManager) sharedInstance] registerProcessForAuditToken:handle.auditToken];
 
+        if (@available(iOS 17.4, *)) {
+            NSString *hostingFailureReason = nil;
+            if ([self createHostedSceneForProcessHandle:handle failureReason:&hostingFailureReason]) {
+                return YES;
+            }
+            NSLog(@"ArcLaunch keyboard-aware scene hosting unavailable; falling back to FrontBoard presenter: %@", hostingFailureReason);
+        }
+
         // 每次打开都用新的场景标识，多窗口与关闭后重开互不干扰。
         NSString *sceneIdentifier = [NSString stringWithFormat:@"%@:%@:%@", ArcLaunchFloatingScenePrefix, self.bundleIdentifier, NSUUID.UUID.UUIDString];
         FBSMutableSceneDefinition *definition = [ArcLaunchPrivateClass(FBSMutableSceneDefinition) definition];
@@ -169,6 +184,115 @@ static BOOL ArcLaunchProcessIsAlive(pid_t processIdentifier) {
         *failureReason = [NSString stringWithFormat:@"创建场景失败：%@", exception.reason];
         [self destroyScene];
         return NO;
+    }
+}
+
+- (BOOL)createHostedSceneForProcessHandle:(RBSProcessHandle *)handle failureReason:(NSString **)failureReason {
+    Class configurationClass = ArcLaunchPrivateClass(_UISceneHostingControllerAdvancedConfiguration);
+    Class hostingControllerClass = ArcLaunchPrivateClass(_UISceneHostingController);
+    if (!configurationClass || !hostingControllerClass || !self.parentViewController) {
+        if (failureReason) {
+            *failureReason = @"UIKit 场景托管接口或父控制器不可用";
+        }
+        return NO;
+    }
+
+    _UISceneHostingController *hostingController = nil;
+    UIViewController *hostedViewController = nil;
+    BOOL addedToParent = NO;
+    @try {
+        _UISceneHostingControllerAdvancedConfiguration *configuration = [[configurationClass alloc] initWithProcessIdentity:handle.identity];
+        configuration.sceneSpecification = [ArcLaunchPrivateClass(UIApplicationSceneSpecification) specification];
+        if (@available(iOS 18.0, *)) {
+            Class eventDeferringExtensionClass = NSClassFromString(@"_UISceneHostingEventDeferringExtension");
+            SEL setExtensionsSelector = NSSelectorFromString(@"setAdditionalExtensions:");
+            if (eventDeferringExtensionClass && [configuration respondsToSelector:setExtensionsSelector]) {
+                configuration.additionalExtensions = [NSOrderedSet orderedSetWithObject:[eventDeferringExtensionClass new]];
+            }
+        }
+
+        hostingController = [[hostingControllerClass alloc] initWithAdvancedConfiguration:configuration];
+        hostedViewController = [hostingController sceneViewController];
+        if (!hostingController || !hostedViewController) {
+            @throw [NSException exceptionWithName:@"ArcLaunchSceneHostingFailure" reason:@"UIKit 未创建托管场景控制器" userInfo:nil];
+        }
+
+        [self.parentViewController addChildViewController:hostedViewController];
+        addedToParent = YES;
+        UIView *hostedView = hostedViewController.view;
+        _UIScenePresenter *presenter = [hostedView valueForKey:@"_scenePresenter"];
+        if (!hostedView || !presenter) {
+            @throw [NSException exceptionWithName:@"ArcLaunchSceneHostingFailure" reason:@"UIKit 托管场景未提供场景 presenter" userInfo:nil];
+        }
+
+        [presenter modifyPresentationContext:^(UIMutableScenePresentationContext *context) {
+            context.appearanceStyle = ArcLaunchFloatingPresentationAppearanceStyle;
+        }];
+        [self applyInitialSettingsToHostedScene:presenter.scene];
+        [self configureEventDeferringForHostingController:hostingController viewController:hostedViewController];
+
+        self.hostingController = hostingController;
+        self.hostingViewController = hostedViewController;
+        self.presenter = presenter;
+        self.presentationView = hostedView;
+        return YES;
+    } @catch (NSException *exception) {
+        if (failureReason) {
+            *failureReason = exception.reason ?: @"创建 UIKit 托管场景失败";
+        }
+        @try {
+            [hostingController invalidate];
+        } @catch (NSException *cleanupException) {
+            NSLog(@"ArcLaunch hosted scene cleanup failed: %@", cleanupException);
+        }
+        if (addedToParent) {
+            [hostedViewController willMoveToParentViewController:nil];
+            [hostedViewController.view removeFromSuperview];
+            [hostedViewController removeFromParentViewController];
+        }
+        return NO;
+    }
+}
+
+- (void)applyInitialSettingsToHostedScene:(FBScene *)scene {
+    UIMutableApplicationSceneSettings *initialSettings = [self initialSceneSettings];
+    [scene updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
+        settings.canShowAlerts = initialSettings.canShowAlerts;
+        settings.displayConfiguration = initialSettings.displayConfiguration;
+        settings.foreground = initialSettings.foreground;
+        settings.frame = initialSettings.frame;
+        settings.interfaceOrientation = initialSettings.interfaceOrientation;
+        if ([initialSettings respondsToSelector:@selector(deviceOrientation)] && [settings respondsToSelector:@selector(setDeviceOrientation:)]) {
+            settings.deviceOrientation = initialSettings.deviceOrientation;
+        }
+        settings.level = initialSettings.level;
+        settings.persistenceIdentifier = initialSettings.persistenceIdentifier;
+        settings.peripheryInsets = initialSettings.peripheryInsets;
+        settings.safeAreaInsetsPortrait = initialSettings.safeAreaInsetsPortrait;
+        settings.statusBarDisabled = initialSettings.statusBarDisabled;
+        settings.userInterfaceStyle = initialSettings.userInterfaceStyle;
+    }];
+}
+
+- (void)configureEventDeferringForHostingController:(_UISceneHostingController *)hostingController viewController:(UIViewController *)viewController {
+    NSOperatingSystemVersion version = NSProcessInfo.processInfo.operatingSystemVersion;
+    if (version.majorVersion < 27 || ![hostingController respondsToSelector:NSSelectorFromString(@"_eventDeferringComponent")]) {
+        return;
+    }
+    @try {
+        id component = [hostingController valueForKey:@"_eventDeferringComponent"];
+        [component setValue:viewController forKey:@"_firstResponderTrackingSelectionPath"];
+        [component setValue:@2 forKey:@"grantBehavior"];
+        [component setValue:@2 forKey:@"selectionRequestBehavior"];
+    } @catch (NSException *exception) {
+        NSLog(@"ArcLaunch event-deferring setup failed: %@", exception);
+    }
+}
+
+- (void)didAttachPresentationView {
+    UIViewController *viewController = self.hostingViewController;
+    if (viewController.parentViewController == self.parentViewController && self.presentationView.superview) {
+        [viewController didMoveToParentViewController:self.parentViewController];
     }
 }
 
@@ -279,6 +403,26 @@ static BOOL ArcLaunchProcessIsAlive(pid_t processIdentifier) {
 }
 
 - (void)destroyScene {
+    if (self.hostingController) {
+        _UISceneHostingController *hostingController = self.hostingController;
+        UIViewController *viewController = self.hostingViewController;
+        self.hostingController = nil;
+        self.hostingViewController = nil;
+        self.presenter = nil;
+        [self.presentationView removeFromSuperview];
+        self.presentationView = nil;
+        @try {
+            [hostingController invalidate];
+        } @catch (NSException *exception) {
+            NSLog(@"ArcLaunch hosted scene invalidation failed: %@", exception);
+        }
+        if (viewController.parentViewController) {
+            [viewController willMoveToParentViewController:nil];
+            [viewController removeFromParentViewController];
+        }
+        return;
+    }
+
     _UIScenePresenter *presenter = self.presenter;
     self.presenter = nil;
     [self.presentationView removeFromSuperview];
