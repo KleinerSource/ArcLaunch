@@ -1,6 +1,6 @@
 # ArcLaunch
 
-ArcLaunch 是一个仅面向 TrollStore 的 iPhone 全局快捷启动器。启动 ArcLaunch 后，它会以 UIKit 插件模式运行独立 HUD 子进程，并通过 SpringBoard accessibility window hosting 在屏幕边缘内侧 10pt 处显示一条细短悬浮条。
+ArcLaunch（中文名：快捷启动器）是一个仅面向 TrollStore 的 iPhone 全局快捷启动器。启动 ArcLaunch 后，它会以 UIKit 插件模式运行独立 HUD 子进程，并通过 SpringBoard accessibility window hosting 在屏幕边缘内侧 10pt 处显示一条细短悬浮条。
 
 从悬浮条向内滑动即围绕悬浮条一圈一圈地展开最多 48 个应用的扇形菜单，每圈按屏幕可显示的范围放下尽可能多的图标。滑到图标上会放大预览、显示应用名称并触发一次 Taptic Engine 震动，松手启动该应用，在空白处松手则取消。长按后拖动可调整位置（可拖到四个角落），长按不移动则进入配置页；锁屏界面自动隐藏悬浮条。
 
