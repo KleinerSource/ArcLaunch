@@ -30,6 +30,7 @@ jobs:
       - name: Install Theos and patched SDK
         env:
           THEOS: ${{ runner.temp }}/theos
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos | bash
