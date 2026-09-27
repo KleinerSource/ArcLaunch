@@ -59,7 +59,7 @@ jobs:
             local filters="$source_root/var/jb/Library/MobileSubstrate/DynamicLibraries"
             test -s "$filters/ArcLaunchGuestKeyboardBridge.dylib"
             test -s "$filters/ArcLaunchGuestKeyboardBridge.plist"
-            lipo "$filters/ArcLaunchGuestKeyboardBridge.dylib" -verify_arch "$arch"
+            test "$(lipo -archs "$filters/ArcLaunchGuestKeyboardBridge.dylib")" = "$arch"
 
             local package_root
             package_root="$(mktemp -d)"
@@ -82,7 +82,7 @@ jobs:
             dpkg-deb -x "$package" "$verify_root"
             test -s "$verify_root/var/mobile/Library/ArcLaunch/KeyboardBridge/ArcLaunchGuestKeyboardBridge.dylib"
             test -s "$verify_root/var/mobile/Library/ArcLaunch/KeyboardBridge/ArcLaunchGuestKeyboardBridge.plist"
-            lipo "$verify_root/var/mobile/Library/ArcLaunch/KeyboardBridge/ArcLaunchGuestKeyboardBridge.dylib" -verify_arch "$arch"
+            test "$(lipo -archs "$verify_root/var/mobile/Library/ArcLaunch/KeyboardBridge/ArcLaunchGuestKeyboardBridge.dylib")" = "$arch"
           }
 
           build_package arm64 iphoneos-arm64
