@@ -46,11 +46,9 @@ jobs:
           stage="$(mktemp -d)"
           dpkg-deb -x "$package" "$stage"
           filters="$stage/var/jb/Library/MobileSubstrate/DynamicLibraries"
-          for tweak in ArcLaunchHUDKeyboardHost ArcLaunchGuestKeyboardBridge; do
-            test -s "$filters/$tweak.dylib"
-            lipo "$filters/$tweak.dylib" -verify_arch arm64 arm64e
-            test -s "$filters/$tweak.plist"
-          done
+          test -s "$filters/ArcLaunchGuestKeyboardBridge.dylib"
+          lipo "$filters/ArcLaunchGuestKeyboardBridge.dylib" -verify_arch arm64 arm64e
+          test -s "$filters/ArcLaunchGuestKeyboardBridge.plist"
 
       - name: Upload package
         uses: actions/upload-artifact@v7

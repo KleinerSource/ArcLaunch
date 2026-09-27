@@ -4,11 +4,7 @@ THEOS_PACKAGE_SCHEME = rootless
 
 include $(THEOS)/makefiles/common.mk
 
-TWEAK_NAME = ArcLaunchHUDKeyboardHost ArcLaunchGuestKeyboardBridge
-
-ArcLaunchHUDKeyboardHost_FILES = HUDKeyboardHost.xm
-ArcLaunchHUDKeyboardHost_FRAMEWORKS = Foundation UIKit
-ArcLaunchHUDKeyboardHost_CFLAGS = -fobjc-arc
+TWEAK_NAME = ArcLaunchGuestKeyboardBridge
 
 ArcLaunchGuestKeyboardBridge_FILES = GuestKeyboardBridge.xm
 ArcLaunchGuestKeyboardBridge_FRAMEWORKS = Foundation UIKit

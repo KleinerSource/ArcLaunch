@@ -1,8 +1,8 @@
 # ArcLaunch 键盘桥接插件
 
-此 RootHide/ElleKit 插件为 iOS 17.0–17.3.1 上由 FrontBoard presenter 悬浮托管的应用，尝试启用 UIKit 的窗口化软键盘路径。它包含两个 Theos tweak：HUD 侧避免覆盖层成为键盘 key window；guest 侧只在 ArcLaunch 正在悬浮托管该 bundle 时修改 `UIKeyboardVisualModeManager` 的键盘策略。
+这是一个 rootless Theos 插件，针对 ArcLaunch 通过 FrontBoard 悬浮托管的应用启用 UIKit 窗口化软键盘策略。插件只在被托管应用中运行；ArcLaunch HUD 窗口保留系统默认的 key-window 行为，以保证悬浮菜单和触摸事件正常工作。
 
-这是针对旧版 FrontBoard 路径的缓解方案。它不注册 KeyboardManagement hosted 服务；参考分析指出，窗口化 hook 未必能单独解决键盘焦点或位置问题，需在设备上验证。
+插件支持 `arm64` 和 `arm64e`。GitHub Actions 会构建 rootless `.deb`，并检查包内 dylib 的两个架构切片。
 
 ## 安装
 
@@ -12,7 +12,7 @@
 
 ## 验收
 
-在 Relaxin 支持的 iOS 17.0–17.3.1 设备上，分别测试悬浮与全屏运行：点按文本框、确认键盘显示且位置正确、输入文本、收起后再次唤起；同时确认 HUD 的触摸、拖动和缩放正常。用系统日志筛选 `ArcLaunchKeyboardBridge`，应能看到 HUD 发布状态及 guest 收到活动宿主 PID 的记录。
+在 Relaxin 支持的 iOS 17.0–17.3.1 设备上，测试悬浮应用中的键盘显示、输入和再次唤起；同时确认扇形菜单、悬浮条拖动与窗口缩放正常。用系统日志筛选 `ArcLaunchKeyboardBridge`，应能看到 guest 应用收到活动 HUD PID 的记录。
 
 ## 构建
 
@@ -22,4 +22,4 @@
 gmake package THEOS_PACKAGE_SCHEME=rootless
 ```
 
-生成的 rootless `.deb` 位于 `packages/`。GitHub Actions 会构建并检查包内的两个 dylib 和对应过滤 plist。
+生成的 rootless `.deb` 位于 `packages/`。
