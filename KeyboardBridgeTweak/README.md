@@ -1,12 +1,12 @@
 # ArcLaunch 键盘桥接插件
 
-这是一个 rootless Theos 插件，针对 ArcLaunch 通过 FrontBoard 悬浮托管的应用启用 UIKit 窗口化软键盘策略。插件只在被托管应用中运行；ArcLaunch HUD 窗口保留系统默认的 key-window 行为，以保证悬浮菜单和触摸事件正常工作。
+这是一个 Theos 插件，针对 ArcLaunch 通过 FrontBoard 悬浮托管的应用启用 UIKit 窗口化软键盘策略。插件只在被托管应用中运行；ArcLaunch HUD 窗口保留系统默认的 key-window 行为，以保证悬浮菜单和触摸事件正常工作。
 
-插件支持 `arm64` 和 `arm64e`。GitHub Actions 会构建 rootless `.deb`，并检查包内 dylib 的两个架构切片。
+GitHub Actions 会分别产出 `arm64` rootless、`arm64e` rootless 和独立的 `arm64e` RootHide `.deb`，并检查每个包的 Debian 架构标记、dylib 架构和安装路径。
 
 ## 安装
 
-1. 在 GitHub Actions 的 `ArcLaunchKeyboardBridge` artifact 下载 `.deb`，用 Relaxin 的包管理器安装。
+1. 在 GitHub Actions 中按越狱环境下载对应 artifact：RootHide 环境使用 `ArcLaunchKeyboardBridge-arm64e-roothide`；标准 rootless 环境使用 `ArcLaunchKeyboardBridge-arm64-rootless` 或 `ArcLaunchKeyboardBridge-arm64e-rootless`。用 Relaxin 的包管理器安装。
 2. 确认 ElleKit 对 ArcLaunch 和需要悬浮运行的应用启用了 tweak 注入。
 3. 重启 ArcLaunch 和已运行的 guest 应用。
 

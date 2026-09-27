@@ -27,33 +27,72 @@ jobs:
       - name: Install build dependencies
         run: brew install dpkg make
 
-      - name: Install Theos and patched SDK
+      - name: Install RootHide Theos and patched SDK
         env:
           THEOS: ${{ runner.temp }}/theos
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos | bash
+          curl -fsSL https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos | bash
           echo "THEOS=$THEOS" >> "$GITHUB_ENV"
           echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
 
-      - name: Build package
+      - name: Build rootless and RootHide packages
         run: |
           set -euo pipefail
-          gmake -C KeyboardBridgeTweak package THEOS_PACKAGE_SCHEME=rootless
-          package="$(find KeyboardBridgeTweak/packages -maxdepth 1 -name '*.deb' -print -quit)"
-          test -n "$package"
-          stage="$(mktemp -d)"
-          dpkg-deb -x "$package" "$stage"
-          filters="$stage/var/jb/Library/MobileSubstrate/DynamicLibraries"
-          test -s "$filters/ArcLaunchGuestKeyboardBridge.dylib"
-          lipo "$filters/ArcLaunchGuestKeyboardBridge.dylib" -verify_arch arm64 arm64e
-          test -s "$filters/ArcLaunchGuestKeyboardBridge.plist"
+          artifact_dir="$RUNNER_TEMP/ArcLaunchKeyboardBridge"
+          mkdir -p "$artifact_dir"
 
-      - name: Upload package
+          build_package() {
+            local arch="$1"
+            local scheme="$2"
+            local package_arch="$3"
+            gmake -C KeyboardBridgeTweak clean THEOS_PACKAGE_SCHEME="$scheme"
+            rm -f KeyboardBridgeTweak/packages/*.deb
+            gmake -C KeyboardBridgeTweak package THEOS_PACKAGE_SCHEME="$scheme" ARCHS="$arch" THEOS_PACKAGE_ARCH="$package_arch"
+            local package
+            package="$(find KeyboardBridgeTweak/packages -maxdepth 1 -type f -name "*_${package_arch}.deb" -print -quit)"
+            test -n "$package"
+            test "$(dpkg-deb -f "$package" Architecture)" = "$package_arch"
+            local stage
+            stage="$(mktemp -d)"
+            dpkg-deb -x "$package" "$stage"
+            local filters
+            if [[ "$scheme" == "roothide" ]]; then
+              filters="$stage/Library/MobileSubstrate/DynamicLibraries"
+            else
+              filters="$stage/var/jb/Library/MobileSubstrate/DynamicLibraries"
+            fi
+            test -s "$filters/ArcLaunchGuestKeyboardBridge.dylib"
+            lipo "$filters/ArcLaunchGuestKeyboardBridge.dylib" -verify_arch "$arch"
+            test -s "$filters/ArcLaunchGuestKeyboardBridge.plist"
+            cp "$package" "$artifact_dir/ArcLaunchKeyboardBridge-${arch}-${scheme}.deb"
+          }
+
+          build_package arm64 rootless iphoneos-arm64
+          build_package arm64e rootless iphoneos-arm64e
+          build_package arm64e roothide iphoneos-arm64e
+
+      - name: Upload arm64 package
         uses: actions/upload-artifact@v7
         with:
-          name: ArcLaunchKeyboardBridge
-          path: KeyboardBridgeTweak/packages/*.deb
+          name: ArcLaunchKeyboardBridge-arm64-rootless
+          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-arm64-rootless.deb
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload arm64e rootless package
+        uses: actions/upload-artifact@v7
+        with:
+          name: ArcLaunchKeyboardBridge-arm64e-rootless
+          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-arm64e-rootless.deb
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload arm64e RootHide package
+        uses: actions/upload-artifact@v7
+        with:
+          name: ArcLaunchKeyboardBridge-arm64e-roothide
+          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-arm64e-roothide.deb
           if-no-files-found: error
           retention-days: 30
