@@ -1,6 +1,7 @@
 #import "FloatingAppSceneHost.h"
 #import "ArcLaunchFrontBoardPrivate.h"
 #import <errno.h>
+#import <notify.h>
 #import <signal.h>
 
 static NSString * const ArcLaunchFloatingScenePrefix = @"ArcLaunch.floating";
@@ -28,9 +29,11 @@ static BOOL ArcLaunchProcessIsAlive(pid_t processIdentifier) {
 @property (nonatomic) BOOL launchedByHost;
 @property (nonatomic) BOOL processExited;
 @property (nonatomic) BOOL invalidated;
+@property (nonatomic) BOOL keyboardBridgeActive;
 - (BOOL)createHostedSceneForProcessHandle:(RBSProcessHandle *)handle failureReason:(NSString **)failureReason API_AVAILABLE(ios(17.4));
 - (void)applyInitialSettingsToHostedScene:(FBScene *)scene;
 - (void)configureEventDeferringForHostingController:(_UISceneHostingController *)hostingController viewController:(UIViewController *)viewController;
+- (void)setKeyboardBridgeActive:(BOOL)active;
 @end
 
 @implementation FloatingAppSceneHost
@@ -110,8 +113,37 @@ static BOOL ArcLaunchProcessIsAlive(pid_t processIdentifier) {
         completion(NO, failureReason);
         return;
     }
+    // iOS 17.0–17.3 使用裸 FrontBoard presenter；tweak 在 guest 进程中开启 windowed keyboard。
+    if (!self.hostingController) {
+        [self setKeyboardBridgeActive:YES];
+    }
     [self monitorProcessExit];
     completion(YES, nil);
+}
+
+- (void)setKeyboardBridgeActive:(BOOL)active {
+    if (self.keyboardBridgeActive == active) {
+        return;
+    }
+
+    NSString *notificationName = [NSString stringWithFormat:@"com.kleinersource.arclaunch.keyboardbridge.%@", self.bundleIdentifier];
+    int token = NOTIFY_TOKEN_INVALID;
+    if (notify_register_check(notificationName.UTF8String, &token) != NOTIFY_STATUS_OK) {
+        NSLog(@"[ArcLaunchKeyboardBridge] Could not register %@", notificationName);
+        return;
+    }
+    uint32_t stateStatus = notify_set_state(token, active ? (uint64_t)getpid() : 0);
+    if (stateStatus == NOTIFY_STATUS_OK) {
+        self.keyboardBridgeActive = active;
+    }
+    uint32_t postStatus = stateStatus == NOTIFY_STATUS_OK ? notify_post(notificationName.UTF8String) : stateStatus;
+    notify_cancel(token);
+    if (stateStatus != NOTIFY_STATUS_OK || postStatus != NOTIFY_STATUS_OK) {
+        NSLog(@"[ArcLaunchKeyboardBridge] Could not %@ %@ (state=%u, post=%u)", active ? @"enable" : @"disable", notificationName, stateStatus, postStatus);
+        return;
+    }
+
+    NSLog(@"[ArcLaunchKeyboardBridge] %@ keyboard bridge for %@ (HUD PID %d)", active ? @"Enabled" : @"Disabled", self.bundleIdentifier, getpid());
 }
 
 - (nullable RBSProcessIdentity *)processIdentity {
@@ -403,6 +435,7 @@ static BOOL ArcLaunchProcessIsAlive(pid_t processIdentifier) {
 }
 
 - (void)destroyScene {
+    [self setKeyboardBridgeActive:NO];
     if (self.hostingController) {
         _UISceneHostingController *hostingController = self.hostingController;
         UIViewController *viewController = self.hostingViewController;

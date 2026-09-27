@@ -1,0 +1,59 @@
+name: Build ArcLaunch Keyboard Bridge
+
+on:
+  push:
+    paths:
+      - "ArcLaunch/Services/FloatingAppSceneHost.m"
+      - "KeyboardBridgeTweak/**"
+      - ".github/workflows/build-keyboard-bridge.yml"
+  pull_request:
+    paths:
+      - "ArcLaunch/Services/FloatingAppSceneHost.m"
+      - "KeyboardBridgeTweak/**"
+      - ".github/workflows/build-keyboard-bridge.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build RootHide tweak package
+    runs-on: macos-15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Install build dependencies
+        run: brew install dpkg make ldid-procursus
+
+      - name: Install Theos and patched SDK
+        env:
+          THEOS: ${{ runner.temp }}/theos
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos | bash
+          echo "THEOS=$THEOS" >> "$GITHUB_ENV"
+          echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
+
+      - name: Build package
+        run: |
+          set -euo pipefail
+          gmake -C KeyboardBridgeTweak package THEOS_PACKAGE_SCHEME=rootless
+          package="$(find KeyboardBridgeTweak/packages -maxdepth 1 -name '*.deb' -print -quit)"
+          test -n "$package"
+          stage="$(mktemp -d)"
+          dpkg-deb -x "$package" "$stage"
+          filters="$stage/var/jb/Library/MobileSubstrate/DynamicLibraries"
+          for tweak in ArcLaunchHUDKeyboardHost ArcLaunchGuestKeyboardBridge; do
+            test -s "$filters/$tweak.dylib"
+            test -s "$filters/$tweak.plist"
+          done
+
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: ArcLaunchKeyboardBridge
+          path: KeyboardBridgeTweak/packages/*.deb
+          if-no-files-found: error
+          retention-days: 30
