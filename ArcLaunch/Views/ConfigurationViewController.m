@@ -786,7 +786,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
         notes = [[notes substringWithRange:range] stringByAppendingString:@"…"];
     }
     NSString *message = [NSString stringWithFormat:@"新版本：%@\n当前版本：%@\n\n%@", release.version.displayString, self.updateChecker.currentVersion.displayString, notes];
-    BOOL betaRelease = [release.tagName isEqualToString:@"dev"];
+    BOOL betaRelease = [release.tagName isEqualToString:@"testing"];
     NSComparisonResult versionOrder = [release.version compare:self.updateChecker.currentVersion];
     BOOL downgrade = !betaRelease && versionOrder == NSOrderedAscending;
     BOOL channelSwitch = !betaRelease && versionOrder == NSOrderedSame;
