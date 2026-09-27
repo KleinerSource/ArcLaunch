@@ -25,6 +25,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)openShortcut:(ArcLaunchShortcut *)shortcut icon:(nullable UIImage *)icon fromPoint:(CGPoint)point;
 /// 锁屏时隐藏全部窗口，场景保持运行。
 - (void)setWindowsHidden:(BOOL)hidden;
+/// 将当前展开的窗口收进边栏。
+- (void)minimizeExpandedWindows;
 - (void)closeAllWindows;
 
 @end

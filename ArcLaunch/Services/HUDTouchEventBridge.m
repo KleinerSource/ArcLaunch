@@ -3,6 +3,7 @@
 #import <UIKit/UIKit.h>
 #import <dlfcn.h>
 #import <mach/mach_time.h>
+#import <math.h>
 #import <objc/message.h>
 #import <objc/runtime.h>
 #import <sys/utsname.h>
@@ -94,6 +95,158 @@ static ArcLaunchCreateDigitizerEventFunction ArcLaunchCreateDigitizerEvent;
 static ArcLaunchCreateFingerEventFunction ArcLaunchCreateFingerEvent;
 static ArcLaunchAppendHIDEventFunction ArcLaunchAppendHIDEvent;
 static ArcLaunchSetHIDIntegerFunction ArcLaunchSetHIDInteger;
+
+#pragma mark - 全局轻点监听
+
+// BKSHIDEventRegisterEventCallback 只收到系统已路由给 HUD 的触摸，看不到落在其它应用上的点击；
+// 这里用 monitor 类型的 IOHIDEventSystemClient 旁观全部触摸，既不消费事件也不改变路由。
+typedef struct __IOHIDEventSystemClient *ArcLaunchIOHIDEventSystemClientRef;
+typedef void (*ArcLaunchHIDSystemClientCallback)(void *, void *, void *, ArcLaunchIOHIDEventRef);
+typedef ArcLaunchIOHIDEventSystemClientRef (*ArcLaunchHIDSystemClientCreateFunction)(CFAllocatorRef, int32_t, CFDictionaryRef);
+typedef void (*ArcLaunchHIDSystemClientScheduleFunction)(ArcLaunchIOHIDEventSystemClientRef, CFRunLoopRef, CFStringRef);
+typedef void (*ArcLaunchHIDSystemClientRegisterFunction)(ArcLaunchIOHIDEventSystemClientRef, ArcLaunchHIDSystemClientCallback, void *, void *);
+typedef uint32_t (*ArcLaunchHIDEventGetTypeFunction)(ArcLaunchIOHIDEventRef);
+typedef CFIndex (*ArcLaunchHIDEventGetIntegerFunction)(ArcLaunchIOHIDEventRef, uint32_t);
+typedef double (*ArcLaunchHIDEventGetFloatFunction)(ArcLaunchIOHIDEventRef, uint32_t);
+typedef CFArrayRef (*ArcLaunchHIDEventGetChildrenFunction)(ArcLaunchIOHIDEventRef);
+
+static const int32_t ArcLaunchHIDSystemClientTypeMonitor = 1;
+static const uint32_t ArcLaunchHIDEventTypeDigitizer = 11;
+static const uint32_t ArcLaunchDigitizerFieldX = (11 << 16) + 0;
+static const uint32_t ArcLaunchDigitizerFieldY = (11 << 16) + 1;
+static const uint32_t ArcLaunchDigitizerFieldIdentity = (11 << 16) + 6;
+static const uint32_t ArcLaunchDigitizerFieldTouch = (11 << 16) + 9;
+// 移动不超过 12pt、按住不超过 0.5 秒才算轻点，拖动与长按都不触发。
+static const CGFloat ArcLaunchGlobalTapMaximumDistance = 12.0;
+static const NSTimeInterval ArcLaunchGlobalTapMaximumDuration = 0.5;
+
+static void (^ArcLaunchGlobalTapHandler)(CGPoint);
+static ArcLaunchIOHIDEventSystemClientRef ArcLaunchGlobalTapClient;
+static ArcLaunchHIDEventGetTypeFunction ArcLaunchHIDEventGetType;
+static ArcLaunchHIDEventGetIntegerFunction ArcLaunchHIDEventGetInteger;
+static ArcLaunchHIDEventGetFloatFunction ArcLaunchHIDEventGetFloat;
+static ArcLaunchHIDEventGetChildrenFunction ArcLaunchHIDEventGetChildren;
+/// 按手指标识记录按下位置与时间；超出轻点范围后记为 NSNull，抬起时不再回调。
+static NSMutableDictionary<NSNumber *, id> *ArcLaunchGlobalTapStarts;
+
+@interface ArcLaunchGlobalTapStart : NSObject
+@property (nonatomic) CGPoint location;
+@property (nonatomic) NSTimeInterval timestamp;
+@end
+
+@implementation ArcLaunchGlobalTapStart
+@end
+
+// 触摸屏的数字化仪坐标为 0–1 的归一化值，按设备竖屏的固定坐标系换算成点。
+static CGPoint ArcLaunchGlobalTapLocation(ArcLaunchIOHIDEventRef finger) {
+    CGSize size = UIScreen.mainScreen.fixedCoordinateSpace.bounds.size;
+    double x = ArcLaunchHIDEventGetFloat(finger, ArcLaunchDigitizerFieldX);
+    double y = ArcLaunchHIDEventGetFloat(finger, ArcLaunchDigitizerFieldY);
+    if (x <= 1.0 && y <= 1.0) {
+        x *= size.width;
+        y *= size.height;
+    }
+    return CGPointMake(x, y);
+}
+
+static void ArcLaunchHandleGlobalTapFinger(ArcLaunchIOHIDEventRef finger, NSMutableSet<NSNumber *> *seenIdentities) {
+    if (ArcLaunchHIDEventGetType(finger) != ArcLaunchHIDEventTypeDigitizer) {
+        return;
+    }
+    NSNumber *key = @(ArcLaunchHIDEventGetInteger(finger, ArcLaunchDigitizerFieldIdentity));
+    [seenIdentities addObject:key];
+    BOOL touching = ArcLaunchHIDEventGetInteger(finger, ArcLaunchDigitizerFieldTouch) != 0;
+    CGPoint location = ArcLaunchGlobalTapLocation(finger);
+    NSTimeInterval now = NSProcessInfo.processInfo.systemUptime;
+    id start = ArcLaunchGlobalTapStarts[key];
+
+    if (touching) {
+        if (!start) {
+            ArcLaunchGlobalTapStart *tapStart = [ArcLaunchGlobalTapStart new];
+            tapStart.location = location;
+            tapStart.timestamp = now;
+            ArcLaunchGlobalTapStarts[key] = tapStart;
+        } else if ([start isKindOfClass:ArcLaunchGlobalTapStart.class]) {
+            ArcLaunchGlobalTapStart *tapStart = start;
+            if (hypot(location.x - tapStart.location.x, location.y - tapStart.location.y) > ArcLaunchGlobalTapMaximumDistance) {
+                ArcLaunchGlobalTapStarts[key] = NSNull.null;
+            }
+        }
+        return;
+    }
+
+    [ArcLaunchGlobalTapStarts removeObjectForKey:key];
+    if (![start isKindOfClass:ArcLaunchGlobalTapStart.class]) {
+        return;
+    }
+    ArcLaunchGlobalTapStart *tapStart = start;
+    BOOL tap = now - tapStart.timestamp <= ArcLaunchGlobalTapMaximumDuration &&
+        hypot(location.x - tapStart.location.x, location.y - tapStart.location.y) <= ArcLaunchGlobalTapMaximumDistance;
+    if (tap && ArcLaunchGlobalTapHandler) {
+        ArcLaunchGlobalTapHandler(location);
+    }
+}
+
+static void ArcLaunchHandleGlobalTapEvent(void *target, void *refcon, void *sender, ArcLaunchIOHIDEventRef event) {
+    @autoreleasepool {
+        if (!event || !ArcLaunchGlobalTapHandler || ArcLaunchHIDEventGetType(event) != ArcLaunchHIDEventTypeDigitizer) {
+            return;
+        }
+        NSMutableSet<NSNumber *> *seenIdentities = [NSMutableSet set];
+        CFArrayRef children = ArcLaunchHIDEventGetChildren(event);
+        CFIndex count = children ? CFArrayGetCount(children) : 0;
+        if (count == 0) {
+            ArcLaunchHandleGlobalTapFinger(event, seenIdentities);
+        }
+        for (CFIndex index = 0; index < count; index++) {
+            ArcLaunchHandleGlobalTapFinger((ArcLaunchIOHIDEventRef)CFArrayGetValueAtIndex(children, index), seenIdentities);
+        }
+        // 没有抬起事件就消失的手指（被系统手势取消等）不再参与判断。
+        for (NSNumber *key in ArcLaunchGlobalTapStarts.allKeys) {
+            if (![seenIdentities containsObject:key]) {
+                [ArcLaunchGlobalTapStarts removeObjectForKey:key];
+            }
+        }
+    }
+}
+
+static BOOL ArcLaunchStartGlobalTapMonitor(void) {
+    if (ArcLaunchGlobalTapClient) {
+        return YES;
+    }
+    void *iokit = dlopen("/System/Library/Frameworks/IOKit.framework/IOKit", RTLD_LAZY | RTLD_LOCAL);
+    void *handle = iokit ?: RTLD_DEFAULT;
+    ArcLaunchHIDSystemClientCreateFunction createClient = (ArcLaunchHIDSystemClientCreateFunction)dlsym(handle, "IOHIDEventSystemClientCreateWithType");
+    ArcLaunchHIDSystemClientScheduleFunction schedule = (ArcLaunchHIDSystemClientScheduleFunction)dlsym(handle, "IOHIDEventSystemClientScheduleWithRunLoop");
+    ArcLaunchHIDSystemClientRegisterFunction registerCallback = (ArcLaunchHIDSystemClientRegisterFunction)dlsym(handle, "IOHIDEventSystemClientRegisterEventCallback");
+    ArcLaunchHIDEventGetType = (ArcLaunchHIDEventGetTypeFunction)dlsym(handle, "IOHIDEventGetType");
+    ArcLaunchHIDEventGetInteger = (ArcLaunchHIDEventGetIntegerFunction)dlsym(handle, "IOHIDEventGetIntegerValue");
+    ArcLaunchHIDEventGetFloat = (ArcLaunchHIDEventGetFloatFunction)dlsym(handle, "IOHIDEventGetFloatValue");
+    ArcLaunchHIDEventGetChildren = (ArcLaunchHIDEventGetChildrenFunction)dlsym(handle, "IOHIDEventGetChildren");
+    if (!createClient || !schedule || !registerCallback || !ArcLaunchHIDEventGetType || !ArcLaunchHIDEventGetInteger || !ArcLaunchHIDEventGetFloat || !ArcLaunchHIDEventGetChildren) {
+        NSLog(@"ArcLaunch global tap monitor: IOHIDEventSystemClient API unavailable");
+        return NO;
+    }
+    ArcLaunchIOHIDEventSystemClientRef client = createClient(kCFAllocatorDefault, ArcLaunchHIDSystemClientTypeMonitor, NULL);
+    if (!client) {
+        NSLog(@"ArcLaunch global tap monitor: could not create monitor client");
+        return NO;
+    }
+    ArcLaunchGlobalTapStarts = [NSMutableDictionary dictionary];
+    // 调度到主线程运行循环，回调与 UIKit 同线程，可直接读取视图状态。
+    schedule(client, CFRunLoopGetMain(), kCFRunLoopCommonModes);
+    registerCallback(client, ArcLaunchHandleGlobalTapEvent, NULL, NULL);
+    ArcLaunchGlobalTapClient = client;
+    return YES;
+}
+
+void ArcLaunchSetGlobalTapHandler(void (^handler)(CGPoint)) {
+    ArcLaunchGlobalTapHandler = [handler copy];
+    [ArcLaunchGlobalTapStarts removeAllObjects];
+    if (handler) {
+        ArcLaunchStartGlobalTapMonitor();
+    }
+}
 
 static void ArcLaunchLoadHIDEventFunctions(void) {
     static dispatch_once_t onceToken;

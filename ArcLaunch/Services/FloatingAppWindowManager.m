@@ -34,7 +34,6 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
 @property (nonatomic, strong) NSMutableArray<ArcLaunchFloatingWindowEntry *> *entries;
 /// 收纳区中的窗口，按收起的先后顺序从上往下排列。
 @property (nonatomic, strong) NSMutableArray<ArcLaunchFloatingWindowEntry *> *minimizedEntries;
-@property (nonatomic, strong) UIView *backgroundTapView;
 @property (nonatomic, strong) UIVisualEffectView *dockPlateView;
 @property (nonatomic, strong) UIView *dockHandleView;
 @property (nonatomic, strong) UIView *dockHandlePillView;
@@ -44,7 +43,6 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
 @property (nonatomic) BOOL dockCollapsed;
 @property (nonatomic) CGFloat dockHandleCenterY;
 - (void)minimizeExpandedEntriesExcept:(nullable ArcLaunchFloatingWindowEntry *)focusedEntry;
-- (void)backgroundTapped;
 - (void)collapseDock;
 - (void)expandDock;
 - (void)layoutDockHandle;
@@ -64,15 +62,6 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
         _dockEdge = ArcLaunchEdgeRight;
         _userInterfaceStyle = UIUserInterfaceStyleLight;
         _handleStyle = ArcLaunchHandleStyleAutomatic;
-
-        _backgroundTapView = [[UIView alloc] initWithFrame:containerView.bounds];
-        _backgroundTapView.backgroundColor = UIColor.clearColor;
-        _backgroundTapView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        ArcLaunchSetLayerHitTestsAsOpaque(_backgroundTapView.layer, YES);
-        UITapGestureRecognizer *backgroundTapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(backgroundTapped)];
-        backgroundTapRecognizer.cancelsTouchesInView = YES;
-        [_backgroundTapView addGestureRecognizer:backgroundTapRecognizer];
-        [containerView addSubview:_backgroundTapView];
 
         // 收纳区底板只包住缩略图，不占满整条屏幕边缘；缩略图之间的缝隙也不能漏触摸到下层应用。
         _dockPlateView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
@@ -145,17 +134,11 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
         return @[];
     }
     NSMutableArray<UIView *> *views = [NSMutableArray arrayWithCapacity:self.entries.count + 1];
-    BOOL hasExpandedEntry = NO;
     for (ArcLaunchFloatingWindowEntry *entry in self.entries) {
-        BOOL minimized = [self isEntryMinimized:entry];
-        if (self.dockCollapsed && minimized) {
+        if (self.dockCollapsed && [self isEntryMinimized:entry]) {
             continue;
         }
         [views addObject:entry.windowView];
-        hasExpandedEntry = hasExpandedEntry || !minimized;
-    }
-    if (hasExpandedEntry) {
-        [views addObject:self.backgroundTapView];
     }
     if (self.minimizedEntries.count > 0) {
         [views addObject:self.dockCollapsed ? self.dockHandleView : self.dockPlateView];
@@ -387,7 +370,10 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
     }
 }
 
-- (void)backgroundTapped {
+- (void)minimizeExpandedWindows {
+    if (self.windowsHidden) {
+        return;
+    }
     [self minimizeExpandedEntriesExcept:nil];
 }
 
@@ -551,7 +537,12 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
     // 窗口内容按窗口宽度等比缩放；去掉标题条后与屏幕等大，应用与键盘都按原尺寸显示。
     // 放到收纳区之上，避免底板盖住应用画面。
     [self.containerView bringSubviewToFront:entry.windowView];
-    CGRect frame = [self bounds];
+    // 应用始终按竖屏布局：竖屏时正好铺满屏幕；横屏时按竖屏比例放到最大并居中，避免画面被放大裁切。
+    CGRect bounds = [self bounds];
+    CGSize screenSize = entry.windowView.screenSize;
+    CGFloat scale = screenSize.width > 0.0 && screenSize.height > 0.0 ? MIN(CGRectGetWidth(bounds) / screenSize.width, CGRectGetHeight(bounds) / screenSize.height) : 1.0;
+    CGSize size = CGSizeMake(screenSize.width * scale, screenSize.height * scale);
+    CGRect frame = CGRectMake(CGRectGetMidX(bounds) - size.width / 2.0, CGRectGetMidY(bounds) - size.height / 2.0, size.width, size.height);
     [UIView animateWithDuration:0.3 delay:0.0 usingSpringWithDamping:0.9 initialSpringVelocity:0.0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
         entry.windowView.keyboardFullScreen = YES;
         entry.windowView.frame = frame;

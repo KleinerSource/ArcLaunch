@@ -4,6 +4,7 @@
 #import "ArcLaunchFanLayout.h"
 #import "ArcLaunchLayerHitTesting.h"
 #import "ArcLaunchSettingsStore.h"
+#import "HUDTouchEventBridge.h"
 #import "SystemApplicationBridge.h"
 #import <math.h>
 #import <notify.h>
@@ -154,6 +155,19 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
         self.floatingWindowManager.interactiveViewsDidChangeHandler = ^{
             [weakSelf refreshHitTargets];
         };
+        // 点击 HUD 可交互区域以外的地方时收起展开的悬浮窗。只旁观触摸，点击照常交给下层应用；
+        // 不能用全屏透明视图接收，按不透明命中的图层会让系统把整屏触摸都路由给 HUD。
+        ArcLaunchSetGlobalTapHandler(^(CGPoint fixedLocation) {
+            FloatingHUDViewController *strongSelf = weakSelf;
+            if (!strongSelf || !strongSelf.isViewLoaded || !strongSelf.view.window) {
+                return;
+            }
+            CGPoint point = [strongSelf.view convertPoint:fixedLocation fromCoordinateSpace:UIScreen.mainScreen.fixedCoordinateSpace];
+            if ([strongSelf.view pointInside:point withEvent:nil]) {
+                return;
+            }
+            [strongSelf.floatingWindowManager minimizeExpandedWindows];
+        });
     }
 
     self.backdropView = [[UIVisualEffectView alloc] initWithEffect:nil];
@@ -254,6 +268,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+    ArcLaunchSetGlobalTapHandler(nil);
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
     if (_backdropAnimator.state == UIViewAnimatingStateActive) {
         [_backdropAnimator stopAnimation:YES];
