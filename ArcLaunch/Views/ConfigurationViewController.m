@@ -84,6 +84,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
 @property (nonatomic, strong) ArcLaunchUpdateChecker *updateChecker;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, UIImage *> *listIconsByBundleIdentifier;
 @property (nonatomic) BOOL adjustingSlider;
+@property (nonatomic, strong) UISelectionFeedbackGenerator *sliderFeedbackGenerator;
 @end
 
 @implementation ConfigurationViewController
@@ -640,6 +641,19 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
     }];
 }
 
+// 滑块跨过一个档位时轻震一次。只响应手指拖动，表格重载时设置数值不触发。
+- (void)playSliderStepFeedback:(UISlider *)slider {
+    if (!slider.isTracking) {
+        return;
+    }
+    if (!self.sliderFeedbackGenerator) {
+        self.sliderFeedbackGenerator = [UISelectionFeedbackGenerator new];
+    }
+    [self.sliderFeedbackGenerator selectionChanged];
+    // 保持 Taptic Engine 就绪，连续拖过多个档位时不会有延迟。
+    [self.sliderFeedbackGenerator prepare];
+}
+
 - (NSString *)dwellDurationText:(CGFloat)duration {
     return duration < 1.0 ? [NSString stringWithFormat:@"%.0f 毫秒", duration * 1000.0] : [NSString stringWithFormat:@"%.1f 秒", duration];
 }
@@ -654,6 +668,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
     if (fabs(self.settingsStore.settings.floatingWindowDwellDuration - value) < 0.001) {
         return;
     }
+    [self playSliderStepFeedback:sender];
     self.adjustingSlider = sender.isTracking;
     [self.settingsStore mutateSettings:^(ArcLaunchSettings *settings) {
         settings.floatingWindowDwellDuration = value;
@@ -718,6 +733,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
     if (fabs(current - value) < 0.001) {
         return;
     }
+    [self playSliderStepFeedback:sender];
     self.adjustingSlider = sender.isTracking;
     [self.settingsStore mutateSettings:^(ArcLaunchSettings *settings) {
         settings.backdropBlur = value;
@@ -734,6 +750,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
     if (fabs(self.settingsStore.settings.handleTouchRadius - value) < 0.001) {
         return;
     }
+    [self playSliderStepFeedback:sender];
     self.adjustingSlider = sender.isTracking;
     [self.settingsStore mutateSettings:^(ArcLaunchSettings *settings) {
         settings.handleTouchRadius = value;
@@ -751,6 +768,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
     if (fabs(current - value) < 0.001) {
         return;
     }
+    [self playSliderStepFeedback:sender];
     self.adjustingSlider = sender.isTracking;
     [self.settingsStore mutateSettings:^(ArcLaunchSettings *settings) {
         if (horizontal) {
