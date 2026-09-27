@@ -30,8 +30,8 @@ class VersionPolicyTests(unittest.TestCase):
     def test_fixes_and_refactors_bump_patch(self):
         self.assertBump([
             "fix(ios): stop HUD child via root persona stopper",
-            "fix(KSBallSettings): 将最小手柄触控半径从 16 降至 4",
-            "refactor(KSBall): 移除场景代理并改用系统 HUD 进程模型",
+            "fix(ArcLaunchSettings): 将最小手柄触控半径从 16 降至 4",
+            "refactor(ArcLaunch): 移除场景代理并改用系统 HUD 进程模型",
             "优化: 调整扇形菜单展开动画",
             "",
         ], bump_version.BUG_FIX)
@@ -105,7 +105,7 @@ class PendingCommitTests(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         self.repository = directory.name
         self.git("init", "-q")
-        self.git("config", "user.name", "KSBall Tests")
+        self.git("config", "user.name", "ArcLaunch Tests")
         self.git("config", "user.email", "tests@example.com")
         self.git("config", "commit.gpgsign", "false")
 

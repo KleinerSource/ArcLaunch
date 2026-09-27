@@ -1,0 +1,69 @@
+#import "ArcLaunchSharedStorage.h"
+#import <sys/stat.h>
+#import <unistd.h>
+
+static NSString * const ArcLaunchSharedStorageDirectory = @"/var/mobile/ArcLaunch/UserDefaults";
+static const uid_t ArcLaunchMobileUserIdentifier = 501;
+static const gid_t ArcLaunchMobileGroupIdentifier = 501;
+
+@implementation ArcLaunchSharedStorage
+
++ (NSString *)pathForKey:(NSString *)key {
+    return [ArcLaunchSharedStorageDirectory stringByAppendingPathComponent:key];
+}
+
+// HUD 子进程以 root persona 运行。它创建的目录和文件必须交还给 mobile，
+// 否则以 mobile 运行的主程序无法再写入设置，配置页的修改就不会同步到悬浮条。
++ (void)grantMobileAccessToPath:(NSString *)path {
+    if (geteuid() == 0) {
+        chown(path.fileSystemRepresentation, ArcLaunchMobileUserIdentifier, ArcLaunchMobileGroupIdentifier);
+    }
+}
+
++ (BOOL)ensureDirectory {
+    NSError *error = nil;
+    BOOL created = [[NSFileManager defaultManager] createDirectoryAtPath:ArcLaunchSharedStorageDirectory
+                                            withIntermediateDirectories:YES
+                                                             attributes:@{NSFilePosixPermissions: @(0755)}
+                                                                  error:&error];
+    if (!created) {
+        NSLog(@"ArcLaunch shared storage directory creation failed: %@", error.localizedDescription);
+        return NO;
+    }
+    [self grantMobileAccessToPath:ArcLaunchSharedStorageDirectory.stringByDeletingLastPathComponent];
+    [self grantMobileAccessToPath:ArcLaunchSharedStorageDirectory];
+    return YES;
+}
+
++ (NSData *)dataForKey:(NSString *)key {
+    if (![self ensureDirectory]) {
+        return nil;
+    }
+    return [NSData dataWithContentsOfFile:[self pathForKey:key]];
+}
+
++ (BOOL)setData:(NSData *)data forKey:(NSString *)key {
+    if (![self ensureDirectory]) {
+        return NO;
+    }
+
+    NSString *path = [self pathForKey:key];
+    NSError *error = nil;
+    BOOL written = [data writeToFile:path options:NSDataWritingAtomic | NSDataWritingFileProtectionNone error:&error];
+    if (!written) {
+        NSLog(@"ArcLaunch shared storage write failed: %@", error.localizedDescription);
+        return NO;
+    }
+    chmod(path.fileSystemRepresentation, 0644);
+    [self grantMobileAccessToPath:path];
+    return YES;
+}
+
++ (void)removeDataForKey:(NSString *)key {
+    if (![self ensureDirectory]) {
+        return;
+    }
+    [[NSFileManager defaultManager] removeItemAtPath:[self pathForKey:key] error:nil];
+}
+
+@end
