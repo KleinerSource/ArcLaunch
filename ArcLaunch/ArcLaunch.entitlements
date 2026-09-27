@@ -30,8 +30,6 @@
     <true/>
     <key>com.apple.private.hid.manager.client</key>
     <true/>
-    <key>com.apple.hid.manager.user-access-keyboard</key>
-    <true/>
     <key>com.apple.frontboard.launchapplications</key>
     <true/>
     <key>com.apple.private.persona-mgmt</key>
@@ -61,7 +59,6 @@
     <key>com.apple.security.exception.mach-lookup.global-name</key>
     <array>
         <string>com.apple.frontboard.systemappservices</string>
-        <string>com.apple.TextInput</string>
     </array>
     <key>com.apple.springboard-ui.client</key>
     <true/>

@@ -176,16 +176,11 @@ jobs:
           assert_true_entitlement 'com.apple.private.hid.client.event-monitor'
           assert_true_entitlement 'com.apple.private.hid.client.service-protected'
           assert_true_entitlement 'com.apple.private.hid.manager.client'
-          assert_true_entitlement 'com.apple.hid.manager.user-access-keyboard'
           assert_true_entitlement 'user-preference-read'
           assert_true_entitlement 'user-preference-write'
           assert_true_entitlement 'com.apple.private.persona-mgmt'
           assert_true_entitlement 'com.apple.private.security.no-sandbox'
           assert_true_entitlement 'com.apple.private.xpc.launchd.app-server'
-          if ! /usr/libexec/PlistBuddy -c 'Print :com.apple.security.exception.mach-lookup.global-name' artifact/ArcLaunch.entitlements.plist | grep -Fq 'com.apple.TextInput'; then
-            echo '::error title=Missing entitlement::com.apple.TextInput is not in the global Mach lookup allowlist'
-            exit 1
-          fi
           assert_true_entitlement 'com.apple.private.allow-background-haptics'
           assert_true_entitlement 'com.apple.frontboard.launchapplications'
           assert_true_entitlement 'com.apple.runningboard.launchprocess'

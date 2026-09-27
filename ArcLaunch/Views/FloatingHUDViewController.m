@@ -267,6 +267,31 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
     [self layoutHandle];
 }
 
+- (UIRectEdge)preferredScreenEdgesDeferringSystemGestures {
+    ArcLaunchSettings *settings = self.settingsStore.settings;
+    if (settings.menuTriggerMode != ArcLaunchMenuTriggerModeFixedCorners || self.screenLocked) {
+        return UIRectEdgeNone;
+    }
+    if (CGRectGetWidth(self.view.bounds) > CGRectGetHeight(self.view.bounds) && !settings.landscapeTriggerEnabled) {
+        return UIRectEdgeNone;
+    }
+
+    UIRectEdge edges = UIRectEdgeNone;
+    if (settings.fixedTriggerCorners & (ArcLaunchFixedTriggerCornerTopLeft | ArcLaunchFixedTriggerCornerBottomLeft)) {
+        edges |= UIRectEdgeLeft;
+    }
+    if (settings.fixedTriggerCorners & (ArcLaunchFixedTriggerCornerTopRight | ArcLaunchFixedTriggerCornerBottomRight)) {
+        edges |= UIRectEdgeRight;
+    }
+    if (settings.fixedTriggerCorners & (ArcLaunchFixedTriggerCornerTopLeft | ArcLaunchFixedTriggerCornerTopRight)) {
+        edges |= UIRectEdgeTop;
+    }
+    if (settings.fixedTriggerCorners & (ArcLaunchFixedTriggerCornerBottomLeft | ArcLaunchFixedTriggerCornerBottomRight)) {
+        edges |= UIRectEdgeBottom;
+    }
+    return edges;
+}
+
 - (void)reloadFromSettings {
     if (!self.isViewLoaded || self.dragging) {
         return;
@@ -289,6 +314,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
     self.appliedTriggerSignature = triggerSignature;
     self.appliedHandleTouchRadius = settings.handleTouchRadius;
 
+    [self setNeedsUpdateOfScreenEdgesDeferringSystemGestures];
     [self reloadIcons];
     // 用户正在滑动选择时不打断当前菜单。
     if (self.menuVisible && !self.previewingMenu && !triggerChanged) {
@@ -324,6 +350,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
     if (!self.isViewLoaded) {
         return;
     }
+    [self setNeedsUpdateOfScreenEdgesDeferringSystemGestures];
     if (screenLocked) {
         // 切换 enabled 会取消进行中的滑动或拖动。
         NSMutableArray<UIView *> *triggerViews = [NSMutableArray arrayWithObject:self.handleView];
