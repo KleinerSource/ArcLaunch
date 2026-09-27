@@ -2,7 +2,7 @@
 #import <sys/stat.h>
 #import <unistd.h>
 
-static NSString * const ArcLaunchSharedStorageDirectory = @"/var/mobile/ArcLaunch/UserDefaults";
+static NSString * const ArcLaunchSharedStorageDirectory = @"/rootfs/private/var/mobile/ArcLaunch";
 static const uid_t ArcLaunchMobileUserIdentifier = 501;
 static const gid_t ArcLaunchMobileGroupIdentifier = 501;
 

@@ -34,10 +34,8 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 @implementation ArcLaunchFixedTriggerView
 
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
-    CGFloat radius = MIN(CGRectGetWidth(self.bounds), CGRectGetHeight(self.bounds)) / 2.0;
-    CGFloat dx = point.x - CGRectGetMidX(self.bounds);
-    CGFloat dy = point.y - CGRectGetMidY(self.bounds);
-    return dx * dx + dy * dy <= radius * radius;
+    UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:self.layer.cornerRadius];
+    return [path containsPoint:point];
 }
 
 @end
@@ -259,6 +257,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
     }
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadFromSettings) name:ArcLaunchSettingsDidChangeNotification object:self.settingsStore];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(applicationWillResignActive:) name:UIApplicationWillResignActiveNotification object:nil];
     __weak typeof(self) weakSelf = self;
     notify_register_dispatch(ArcLaunchLockStateNotification, &_lockStateToken, dispatch_get_main_queue(), ^(int token) {
         [weakSelf refreshLockState];
@@ -321,7 +320,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
     NSString *shortcutIdentifiers = [sortedIdentifiers componentsJoinedByString:@","];
     NSString *menuLayoutSignature = [NSString stringWithFormat:@"%.2f|%.2f|%.2f|%@", settings.iconSize, settings.iconSpacing, settings.ringSpacing, shortcutIdentifiers];
     NSString *backdropSignature = [NSString stringWithFormat:@"%ld|%.2f", (long)settings.backdropStyle, settings.backdropBlur];
-    NSString *triggerSignature = [NSString stringWithFormat:@"%ld|%lu|%d|%.1f|%.1f", (long)settings.menuTriggerMode, (unsigned long)settings.fixedTriggerCorners, settings.landscapeTriggerEnabled, settings.fixedTriggerHorizontalInset, settings.fixedTriggerVerticalInset];
+    NSString *triggerSignature = [NSString stringWithFormat:@"%ld|%lu|%d|%.1f|%.1f|%.1f", (long)settings.menuTriggerMode, (unsigned long)settings.fixedTriggerCorners, settings.landscapeTriggerEnabled, settings.fixedTriggerHorizontalInset, settings.fixedTriggerVerticalInset, settings.fixedTriggerCornerRadius];
     BOOL menuLayoutChanged = self.hasAppliedSettings && ![menuLayoutSignature isEqualToString:self.appliedMenuLayoutSignature];
     BOOL backdropChanged = self.hasAppliedSettings && ![backdropSignature isEqualToString:self.appliedBackdropSignature];
     BOOL triggerChanged = self.hasAppliedSettings && ![triggerSignature isEqualToString:self.appliedTriggerSignature];
@@ -485,11 +484,12 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
         CGFloat x = left ? settings.fixedTriggerHorizontalInset : CGRectGetWidth(bounds) - settings.fixedTriggerHorizontalInset - diameter;
         CGFloat y = top ? settings.fixedTriggerVerticalInset : CGRectGetHeight(bounds) - settings.fixedTriggerVerticalInset - diameter;
         triggerView.frame = CGRectMake(x, y, diameter, diameter);
-        triggerView.layer.cornerRadius = diameter / 2.0;
+        CGFloat cornerRadius = MIN(settings.fixedTriggerCornerRadius, diameter / 2.0);
+        triggerView.layer.cornerRadius = cornerRadius;
         triggerView.clipsToBounds = YES;
         UIView *areaView = self.fixedTriggerTouchAreaViews[cornerValue];
         areaView.frame = triggerView.bounds;
-        areaView.layer.cornerRadius = diameter / 2.0;
+        areaView.layer.cornerRadius = cornerRadius;
         areaView.clipsToBounds = YES;
         BOOL selected = (settings.fixedTriggerCorners & corner) != 0;
         triggerView.hidden = self.screenLocked || landscapeDisabled || settings.menuTriggerMode != ArcLaunchMenuTriggerModeFixedCorners || !selected;
@@ -1015,6 +1015,11 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 
 - (void)closeFloatingWindows {
     [self.floatingWindowManager closeAllWindows];
+}
+
+- (void)applicationWillResignActive:(NSNotification *)notification {
+    // 系统任务切换手势可能抢占当前触摸序列，导致 panRecognizer 没有收到 Ended 或 Cancelled。
+    [self dismissMenuAnimated:NO];
 }
 
 #pragma mark - 手势

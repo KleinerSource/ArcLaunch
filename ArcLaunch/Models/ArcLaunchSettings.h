@@ -23,6 +23,8 @@ FOUNDATION_EXPORT const CGFloat ArcLaunchMaximumFloatingWindowDwellDuration;
 FOUNDATION_EXPORT const CGFloat ArcLaunchDefaultFloatingWindowDwellDuration;
 FOUNDATION_EXPORT const CGFloat ArcLaunchMinimumFixedTriggerInset;
 FOUNDATION_EXPORT const CGFloat ArcLaunchMaximumFixedTriggerInset;
+FOUNDATION_EXPORT const CGFloat ArcLaunchMinimumFixedTriggerCornerRadius;
+FOUNDATION_EXPORT const CGFloat ArcLaunchMaximumFixedTriggerCornerRadius;
 
 typedef NS_ENUM(NSInteger, ArcLaunchEdge) {
     ArcLaunchEdgeLeft = 0,
@@ -95,6 +97,8 @@ typedef NS_ENUM(NSInteger, ArcLaunchKeyboardDisplayMode) {
 @property (nonatomic) BOOL landscapeTriggerEnabled;
 @property (nonatomic) CGFloat fixedTriggerHorizontalInset;
 @property (nonatomic) CGFloat fixedTriggerVerticalInset;
+/// 固定位置触发区域的圆角半径；最大值为热区半径时呈圆形。
+@property (nonatomic) CGFloat fixedTriggerCornerRadius;
 @property (nonatomic) ArcLaunchEdge edge;
 @property (nonatomic) CGFloat normalizedVerticalPosition;
 @property (nonatomic) CGFloat iconSize;

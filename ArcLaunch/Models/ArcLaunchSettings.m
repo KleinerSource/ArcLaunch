@@ -23,6 +23,8 @@ static const CGFloat ArcLaunchFloatingWindowDwellDurationStep = 0.1;
 const CGFloat ArcLaunchDefaultFloatingWindowDwellDuration = 2.0;
 const CGFloat ArcLaunchMinimumFixedTriggerInset = -30.0;
 const CGFloat ArcLaunchMaximumFixedTriggerInset = 120.0;
+const CGFloat ArcLaunchMinimumFixedTriggerCornerRadius = 0.0;
+const CGFloat ArcLaunchMaximumFixedTriggerCornerRadius = 60.0;
 static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
 
 @implementation ArcLaunchShortcut
@@ -85,6 +87,7 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
     settings.landscapeTriggerEnabled = YES;
     settings.fixedTriggerHorizontalInset = 0.0;
     settings.fixedTriggerVerticalInset = 0.0;
+    settings.fixedTriggerCornerRadius = settings.handleTouchRadius;
     settings.edge = ArcLaunchEdgeRight;
     settings.normalizedVerticalPosition = 0.5;
     settings.shortcuts = [NSMutableArray array];
@@ -118,6 +121,7 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
     copy.landscapeTriggerEnabled = self.landscapeTriggerEnabled;
     copy.fixedTriggerHorizontalInset = self.fixedTriggerHorizontalInset;
     copy.fixedTriggerVerticalInset = self.fixedTriggerVerticalInset;
+    copy.fixedTriggerCornerRadius = self.fixedTriggerCornerRadius;
     copy.edge = self.edge;
     copy.normalizedVerticalPosition = self.normalizedVerticalPosition;
     copy.iconSize = self.iconSize;
@@ -154,6 +158,7 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
     self.ringSpacing = isfinite(self.ringSpacing) ? MIN(MAX(self.ringSpacing, ArcLaunchMinimumRingSpacing), ArcLaunchMaximumRingSpacing) : ArcLaunchDefaultRingSpacing;
     self.backdropBlur = isfinite(self.backdropBlur) ? MIN(MAX(self.backdropBlur, ArcLaunchMinimumBackdropBlur), 1.0) : ArcLaunchDefaultBackdropBlur;
     self.handleTouchRadius = isfinite(self.handleTouchRadius) ? MIN(MAX(self.handleTouchRadius, ArcLaunchMinimumHandleTouchRadius), ArcLaunchMaximumHandleTouchRadius) : ArcLaunchDefaultHandleTouchRadius;
+    self.fixedTriggerCornerRadius = isfinite(self.fixedTriggerCornerRadius) ? MIN(MAX(self.fixedTriggerCornerRadius, ArcLaunchMinimumFixedTriggerCornerRadius), ArcLaunchMaximumFixedTriggerCornerRadius) : self.handleTouchRadius;
     if (self.handleStyle < ArcLaunchHandleStyleLight || self.handleStyle > ArcLaunchHandleStyleAutomatic) {
         self.handleStyle = ArcLaunchHandleStyleAutomatic;
     }
@@ -206,6 +211,7 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
         @"landscapeTriggerEnabled": @(self.landscapeTriggerEnabled),
         @"fixedTriggerHorizontalInset": @(self.fixedTriggerHorizontalInset),
         @"fixedTriggerVerticalInset": @(self.fixedTriggerVerticalInset),
+        @"fixedTriggerCornerRadius": @(self.fixedTriggerCornerRadius),
         @"edge": @(self.edge),
         @"normalizedVerticalPosition": @(self.normalizedVerticalPosition),
         @"iconSize": @(self.iconSize),
@@ -238,6 +244,7 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
     NSNumber *landscapeTriggerEnabled = number(@"landscapeTriggerEnabled");
     NSNumber *fixedTriggerHorizontalInset = number(@"fixedTriggerHorizontalInset");
     NSNumber *fixedTriggerVerticalInset = number(@"fixedTriggerVerticalInset");
+    NSNumber *fixedTriggerCornerRadius = number(@"fixedTriggerCornerRadius");
     NSNumber *edge = number(@"edge");
     NSNumber *verticalPosition = number(@"normalizedVerticalPosition");
     NSNumber *iconSize = number(@"iconSize");
@@ -264,6 +271,12 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
     if (ringSpacing) settings.ringSpacing = ringSpacing.doubleValue;
     if (handleStyle) settings.handleStyle = handleStyle.integerValue;
     if (handleTouchRadius) settings.handleTouchRadius = handleTouchRadius.doubleValue;
+    if (fixedTriggerCornerRadius) {
+        settings.fixedTriggerCornerRadius = fixedTriggerCornerRadius.doubleValue;
+    } else {
+        // 兼容旧设置：未配置弧度时保留原来的圆形触发区。
+        settings.fixedTriggerCornerRadius = settings.handleTouchRadius;
+    }
     if (backdropStyle) settings.backdropStyle = backdropStyle.integerValue;
     if (backdropBlur) settings.backdropBlur = backdropBlur.doubleValue;
 

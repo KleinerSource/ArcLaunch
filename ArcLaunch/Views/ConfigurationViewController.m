@@ -36,11 +36,12 @@ typedef NS_ENUM(NSInteger, ArcLaunchTriggerRow) {
     ArcLaunchTriggerRowLandscape = 2,
     ArcLaunchTriggerRowHorizontalInset = 3,
     ArcLaunchTriggerRowVerticalInset = 4,
-    ArcLaunchTriggerRowTopLeft = 5,
-    ArcLaunchTriggerRowTopRight = 6,
-    ArcLaunchTriggerRowBottomLeft = 7,
-    ArcLaunchTriggerRowBottomRight = 8,
-    ArcLaunchTriggerRowCount = 9,
+    ArcLaunchTriggerRowCornerRadius = 5,
+    ArcLaunchTriggerRowTopLeft = 6,
+    ArcLaunchTriggerRowTopRight = 7,
+    ArcLaunchTriggerRowBottomLeft = 8,
+    ArcLaunchTriggerRowBottomRight = 9,
+    ArcLaunchTriggerRowCount = 10,
 };
 
 typedef NS_ENUM(NSInteger, ArcLaunchLayoutRow) {
@@ -163,7 +164,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
         case ArcLaunchConfigurationSectionHUD:
             return @"悬浮条位于屏幕边缘内侧。从悬浮条向内滑动展开扇形菜单，滑到图标上会显示名称并震动；停留后松手可按悬浮分屏等待时间选择悬浮窗打开，在空白处松手则取消。长按不移动回到此设置页，长按后拖动可调整位置。锁屏界面会自动隐藏悬浮条。";
         case ArcLaunchConfigurationSectionTrigger:
-            return @"把手模式沿用当前可拖动悬浮条，热区为矩形。固定位置模式可同时启用多个屏幕角落，热区为圆形并自动避开系统边缘手势；水平和垂直内缩会在安全距离基础上统一应用到所有已选角落。关闭横屏触发后，横屏时不会拦截游戏触摸。";
+            return @"把手模式沿用当前可拖动悬浮条，热区为矩形。固定位置模式可同时启用多个屏幕角落，触发热区可从直角调至圆形，并自动避开系统边缘手势；水平和垂直内缩会在安全距离基础上统一应用到所有已选角落。关闭横屏触发后，横屏时不会拦截游戏触摸。";
         case ArcLaunchConfigurationSectionAppearance:
             return @"“自动”跟随系统的浅色/深色模式。悬浮条设为隐藏后，边缘的触摸区域仍然有效。模糊程度控制毛玻璃的模糊强度，调整时会实时预览。";
         case ArcLaunchConfigurationSectionLayout:
@@ -313,6 +314,24 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
         slider.value = inset;
         cell.textLabel.text = horizontal ? @"水平内缩" : @"垂直内缩";
         cell.detailTextLabel.text = [NSString stringWithFormat:@"%.0f pt", inset];
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        return cell;
+    }
+
+    if (row == ArcLaunchTriggerRowCornerRadius) {
+        UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"TriggerCornerRadiusCell"] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"TriggerCornerRadiusCell"];
+        UISlider *slider = [cell.accessoryView isKindOfClass:UISlider.class] ? (UISlider *)cell.accessoryView : nil;
+        if (!slider) {
+            slider = [[UISlider alloc] initWithFrame:CGRectMake(0.0, 0.0, 150.0, 32.0)];
+            slider.minimumValue = ArcLaunchMinimumFixedTriggerCornerRadius;
+            [slider addTarget:self action:@selector(fixedTriggerCornerRadiusChanged:) forControlEvents:UIControlEventValueChanged];
+            cell.accessoryView = slider;
+        }
+        slider.maximumValue = settings.handleTouchRadius;
+        CGFloat radius = MIN(settings.fixedTriggerCornerRadius, settings.handleTouchRadius);
+        slider.value = radius;
+        cell.textLabel.text = @"边缘弧度";
+        cell.detailTextLabel.text = [NSString stringWithFormat:@"%.0f pt", radius];
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
         return cell;
     }
@@ -776,6 +795,23 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
         } else {
             settings.fixedTriggerVerticalInset = value;
         }
+    }];
+    self.adjustingSlider = NO;
+}
+
+- (void)fixedTriggerCornerRadiusChanged:(UISlider *)sender {
+    CGFloat value = round(sender.value);
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:ArcLaunchTriggerRowCornerRadius inSection:ArcLaunchConfigurationSectionTrigger];
+    UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
+    cell.detailTextLabel.text = [NSString stringWithFormat:@"%.0f pt", value];
+    CGFloat current = MIN(self.settingsStore.settings.fixedTriggerCornerRadius, self.settingsStore.settings.handleTouchRadius);
+    if (fabs(current - value) < 0.001) {
+        return;
+    }
+    [self playSliderStepFeedback:sender];
+    self.adjustingSlider = sender.isTracking;
+    [self.settingsStore mutateSettings:^(ArcLaunchSettings *settings) {
+        settings.fixedTriggerCornerRadius = value;
     }];
     self.adjustingSlider = NO;
 }
