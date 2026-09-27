@@ -42,10 +42,10 @@ jobs:
           version="$(python3 Scripts/bump_version.py --auto)"
           if [[ "$GITHUB_REF_NAME" == "dev" ]]; then
             /usr/libexec/PlistBuddy -c 'Set :ArcLaunchUpdateChannel dev' ArcLaunch/Info.plist
-            /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'ArcLaunch dev'" ArcLaunch/Info.plist
+            /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName '快捷启动器 dev'" ArcLaunch/Info.plist
           else
             /usr/libexec/PlistBuddy -c 'Set :ArcLaunchUpdateChannel latest' ArcLaunch/Info.plist
-            /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName ArcLaunch" ArcLaunch/Info.plist
+            /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName '快捷启动器'" ArcLaunch/Info.plist
           fi
           echo "构建版本：${version}"
           echo "version=${version}" >> "$GITHUB_OUTPUT"

@@ -195,8 +195,8 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
     [self.view addSubview:self.previewNameLabel];
 
     self.handleView = [[UIView alloc] initWithFrame:CGRectZero];
-    // 几乎透明的底色加上按不透明命中，整个热区都能接住触摸而不会穿透到下层应用。
-    self.handleView.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.012];
+    // 视觉上完全透明，仍按不透明命中处理以接住热区内的触摸。
+    self.handleView.backgroundColor = UIColor.clearColor;
     ArcLaunchSetLayerHitTestsAsOpaque(self.handleView.layer, YES);
     self.handleView.isAccessibilityElement = YES;
     self.handleView.accessibilityLabel = @"ArcLaunch 快捷菜单";

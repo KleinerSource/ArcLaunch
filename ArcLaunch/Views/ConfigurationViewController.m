@@ -101,7 +101,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.title = @"ArcLaunch";
+    self.title = @"快捷启动器";
     self.tableView.tableFooterView = [self applicationFooterView];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(settingsDidChange:) name:ArcLaunchSettingsDidChangeNotification object:self.settingsStore];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(applicationDidBecomeActive:) name:UIApplicationDidBecomeActiveNotification object:nil];
