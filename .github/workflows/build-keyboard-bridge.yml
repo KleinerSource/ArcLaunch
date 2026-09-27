@@ -49,7 +49,7 @@ jobs:
             local package_arch="$3"
             gmake -C KeyboardBridgeTweak clean THEOS_PACKAGE_SCHEME="$scheme"
             rm -f KeyboardBridgeTweak/packages/*.deb
-            gmake -C KeyboardBridgeTweak package THEOS_PACKAGE_SCHEME="$scheme" ARCHS="$arch" THEOS_PACKAGE_ARCH="$package_arch"
+            gmake -C KeyboardBridgeTweak package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME="$scheme" ARCHS="$arch" THEOS_PACKAGE_ARCH="$package_arch"
             local package
             package="$(find KeyboardBridgeTweak/packages -maxdepth 1 -type f -name "*_${package_arch}.deb" -print -quit)"
             test -n "$package"
