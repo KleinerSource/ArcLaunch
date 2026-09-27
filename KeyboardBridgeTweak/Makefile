@@ -12,7 +12,6 @@ ArcLaunchHUDKeyboardHost_CFLAGS = -fobjc-arc
 
 ArcLaunchGuestKeyboardBridge_FILES = GuestKeyboardBridge.xm
 ArcLaunchGuestKeyboardBridge_FRAMEWORKS = Foundation UIKit
-ArcLaunchGuestKeyboardBridge_LIBRARIES = notify
 ArcLaunchGuestKeyboardBridge_CFLAGS = -fobjc-arc
 
 include $(THEOS_MAKE_PATH)/tweak.mk
