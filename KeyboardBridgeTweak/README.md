@@ -4,7 +4,7 @@
 
 GitHub Actions 只产出 `arm64` 和 `arm64e` 两个 `.deb`。两个包的 Debian 架构都标为 `iphoneos-arm64`，文件名对应包内 dylib 的实际切片，方便 rootful、rootless 和 RootHide 的包管理器安装 arm64e 变体。安装脚本会选择注入目录：rootless 使用 `/var/jb/Library/MobileSubstrate/DynamicLibraries`，rootful 和 RootHide 使用 `/Library/MobileSubstrate/DynamicLibraries`。
 
-插件同时会在 guest 应用弹出、收起软键盘时发送 Darwin 通知 `com.kleinersource.arclaunch.keyboardbridge.<bundle>.keyboard.shown` / `.keyboard.hidden`。ArcLaunch 的“键盘显示”设置为“全屏”时，HUD 收到通知后会让该悬浮窗临时铺满屏幕，键盘收起后恢复小窗；设置为“小窗内”时键盘随应用画面缩放显示在小窗中。iOS 17.4 及以上使用 UIKit 场景托管时，宿主会在状态中置位 NativeHosting 标志，插件只上报键盘显隐，不再强制窗口化键盘。
+ArcLaunch 通过 Darwin 通知 `com.kleinersource.arclaunch.keyboardbridge.<bundle>` 将当前键盘显示模式传给 guest。iOS 17.0–17.3 的 FrontBoard presenter 需要 windowed 视觉模式保证键盘可用；选“全屏”后 HUD 临时铺满屏幕，并在键盘收起后恢复小窗。iOS 17.4 及以上使用 UIKit 场景托管；选“全屏”时插件关闭 windowed 视觉模式，让系统键盘按设备屏幕布局显示而悬浮应用保持小窗，选“小窗内”则沿用系统视觉模式。
 
 ## 安装
 
@@ -14,7 +14,7 @@ GitHub Actions 只产出 `arm64` 和 `arm64e` 两个 `.deb`。两个包的 Debia
 
 ## 验收
 
-在 Relaxin 支持的 iOS 17.0–17.3.1 设备上，测试悬浮应用中的键盘显示、输入和再次唤起；同时确认扇形菜单、悬浮条拖动与窗口缩放正常。用系统日志筛选 `ArcLaunchKeyboardBridge`，应能看到 guest 应用收到活动 HUD PID 的记录。
+在 iOS 17.0–17.3.1 设备上，测试键盘弹出后悬浮窗是否铺满屏幕、输入及收起后是否恢复；在 iOS 17.4 及以上设备上，测试全屏模式的键盘是否按设备屏幕布局显示且悬浮应用仍保持小窗。确认扇形菜单、悬浮条拖动与窗口缩放正常。用系统日志筛选 `ArcLaunchKeyboardBridge`，应能看到 guest 应用收到 HUD PID 与 fullscreen 模式位的记录。
 
 ## 构建
 

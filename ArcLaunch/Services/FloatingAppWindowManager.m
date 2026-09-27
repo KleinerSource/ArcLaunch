@@ -20,6 +20,8 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
 @property (nonatomic, strong, nullable) FloatingAppSceneHost *host;
 /// 收起前的窗口位置，恢复时回到这里。
 @property (nonatomic) CGRect restoredFrame;
+/// 键盘是否正在显示。
+@property (nonatomic) BOOL keyboardVisible;
 /// 为显示全屏键盘临时铺满屏幕前的窗口位置，键盘收起后回到这里。
 @property (nonatomic) CGRect frameBeforeKeyboard;
 @end
@@ -47,6 +49,9 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
 - (void)expandDock;
 - (void)layoutDockHandle;
 - (void)updateDockHandleAppearance;
+- (void)handleKeyboardVisible:(BOOL)visible forEntry:(nullable ArcLaunchFloatingWindowEntry *)entry;
+- (void)expandWindowForKeyboardForEntry:(ArcLaunchFloatingWindowEntry *)entry;
+- (void)exitKeyboardFullScreenForEntry:(ArcLaunchFloatingWindowEntry *)entry;
 @end
 
 @implementation FloatingAppWindowManager
@@ -231,6 +236,7 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
     FloatingAppSceneHost *host = [[FloatingAppSceneHost alloc] initWithBundleIdentifier:entry.bundleIdentifier parentViewController:self.parentViewController];
     host.sceneSafeAreaInsets = [self safeAreaInsets];
     host.userInterfaceStyle = self.userInterfaceStyle;
+    host.fullScreenKeyboardEnabled = self.keyboardDisplayMode == ArcLaunchKeyboardDisplayModeFullScreen;
     __weak typeof(self) weakSelf = self;
     __weak ArcLaunchFloatingWindowEntry *weakEntry = entry;
     host.processExitHandler = ^{
@@ -337,7 +343,6 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
     if (self.minimizedEntries.count == 0) {
         self.dockEdge = edge;
     }
-    // 键盘全屏期间被收起时，恢复后应回到铺满屏幕之前的小窗位置。
     CGRect frame = entry.windowView.keyboardFullScreen ? entry.frameBeforeKeyboard : entry.windowView.frame;
     entry.windowView.keyboardFullScreen = NO;
     entry.restoredFrame = [self clampedFrame:frame];
@@ -522,8 +527,15 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
         return;
     }
     _keyboardDisplayMode = keyboardDisplayMode;
-    if (keyboardDisplayMode == ArcLaunchKeyboardDisplayModeInWindow) {
-        for (ArcLaunchFloatingWindowEntry *entry in self.entries) {
+    BOOL fullScreenKeyboardEnabled = keyboardDisplayMode == ArcLaunchKeyboardDisplayModeFullScreen;
+    for (ArcLaunchFloatingWindowEntry *entry in self.entries) {
+        entry.host.fullScreenKeyboardEnabled = fullScreenKeyboardEnabled;
+        if (entry.host.usesUIKitSceneHosting) {
+            continue;
+        }
+        if (fullScreenKeyboardEnabled && entry.keyboardVisible) {
+            [self expandWindowForKeyboardForEntry:entry];
+        } else if (!fullScreenKeyboardEnabled) {
             [self exitKeyboardFullScreenForEntry:entry];
         }
     }
@@ -533,18 +545,25 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
     if (!entry || [self.entries indexOfObjectIdenticalTo:entry] == NSNotFound) {
         return;
     }
+    entry.keyboardVisible = visible;
+    if (entry.host.usesUIKitSceneHosting) {
+        return;
+    }
     if (!visible) {
         [self exitKeyboardFullScreenForEntry:entry];
         return;
     }
-    if (self.keyboardDisplayMode != ArcLaunchKeyboardDisplayModeFullScreen || [self isEntryMinimized:entry] || entry.windowView.keyboardFullScreen) {
+    if (self.keyboardDisplayMode == ArcLaunchKeyboardDisplayModeFullScreen && ![self isEntryMinimized:entry]) {
+        [self expandWindowForKeyboardForEntry:entry];
+    }
+}
+
+- (void)expandWindowForKeyboardForEntry:(ArcLaunchFloatingWindowEntry *)entry {
+    if (entry.windowView.keyboardFullScreen || [self isEntryMinimized:entry]) {
         return;
     }
-    // 置顶后位于收纳区之上，底板不会盖住应用画面。
     [self bringEntryToFront:entry];
     entry.frameBeforeKeyboard = entry.windowView.frame;
-    // 窗口内容按窗口宽度等比缩放；去掉标题条后与屏幕等大，应用与键盘都按原尺寸显示。
-    // 应用始终按竖屏布局：竖屏时正好铺满屏幕；横屏时按竖屏比例放到最大并居中，避免画面被放大裁切。
     CGRect bounds = [self bounds];
     CGSize screenSize = entry.windowView.screenSize;
     CGFloat scale = screenSize.width > 0.0 && screenSize.height > 0.0 ? MIN(CGRectGetWidth(bounds) / screenSize.width, CGRectGetHeight(bounds) / screenSize.height) : 1.0;

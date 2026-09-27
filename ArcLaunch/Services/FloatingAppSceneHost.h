@@ -11,9 +11,13 @@ typedef void (^ArcLaunchFloatingSceneCompletion)(BOOL success, NSString * _Nulla
 @property (nonatomic, copy, readonly) NSString *bundleIdentifier;
 /// 场景就绪后可用的应用画面（CALayerHost），始终按竖屏全屏尺寸布局。
 @property (nonatomic, strong, readonly, nullable) UIView *presentationView;
+/// iOS 17.4 及以上的 UIKit 场景托管路径由系统处理键盘布局。
+@property (nonatomic, readonly) BOOL usesUIKitSceneHosting;
 /// 应用按全屏布局时使用的安全区，需在 start 之前设置。
 @property (nonatomic) UIEdgeInsets sceneSafeAreaInsets;
 @property (nonatomic) UIUserInterfaceStyle userInterfaceStyle;
+/// 全屏模式下让系统键盘使用设备屏幕布局，不把键盘限制在悬浮小窗内。
+@property (nonatomic) BOOL fullScreenKeyboardEnabled;
 /// 被托管的应用进程退出时在主线程回调。
 @property (nonatomic, copy, nullable) dispatch_block_t processExitHandler;
 /// 被托管应用的软键盘弹出或收起时在主线程回调；需安装键盘桥接插件。

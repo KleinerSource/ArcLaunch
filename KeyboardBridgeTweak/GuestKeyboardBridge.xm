@@ -12,10 +12,10 @@
 - (BOOL)useVisualModeWindowed;
 @end
 
-// 与 FloatingAppSceneHost 约定的状态格式：低 32 位为 HUD PID；
-// 置位 NativeHosting 表示宿主使用 UIKit 场景托管，自带键盘支持，guest 不再强制窗口化键盘。
+// 与 FloatingAppSceneHost 约定的状态格式：低 32 位为 HUD PID；高位分别标记 UIKit 托管和全屏键盘模式。
 static const uint64_t ArcLaunchKeyboardBridgeHostPIDMask = 0xFFFFFFFFull;
 static const uint64_t ArcLaunchKeyboardBridgeNativeHostingFlag = 1ull << 32;
+static const uint64_t ArcLaunchKeyboardBridgeFullScreenKeyboardFlag = 1ull << 33;
 
 static os_unfair_lock ArcLaunchKeyboardBridgeStateLock = OS_UNFAIR_LOCK_INIT;
 static uint64_t ArcLaunchKeyboardBridgeState;
@@ -33,7 +33,7 @@ static void ArcLaunchKeyboardBridgeReadState(int token) {
     os_unfair_lock_unlock(&ArcLaunchKeyboardBridgeStateLock);
     uint64_t hostPID = state & ArcLaunchKeyboardBridgeHostPIDMask;
     if (hostPID > 0) {
-        NSLog(@"[ArcLaunchKeyboardBridge] Active keyboard host for %@ (HUD PID %llu, native=%d)", NSBundle.mainBundle.bundleIdentifier, (unsigned long long)hostPID, (state & ArcLaunchKeyboardBridgeNativeHostingFlag) != 0);
+        NSLog(@"[ArcLaunchKeyboardBridge] Active keyboard host for %@ (HUD PID %llu, native=%d, fullscreen=%d)", NSBundle.mainBundle.bundleIdentifier, (unsigned long long)hostPID, (state & ArcLaunchKeyboardBridgeNativeHostingFlag) != 0, (state & ArcLaunchKeyboardBridgeFullScreenKeyboardFlag) != 0);
     }
 }
 
@@ -54,7 +54,7 @@ static BOOL ArcLaunchKeyboardBridgeIsActive(void) {
     return state != 0 && (state & ArcLaunchKeyboardBridgeNativeHostingFlag) == 0;
 }
 
-// 键盘弹出和收起时通知 HUD，由 HUD 按键盘显示模式决定是否临时铺满屏幕。
+// 键盘视觉模式变化时同步通知 HUD；旧版 FrontBoard presenter 仍需要窗口扩展补足系统键盘的大小。
 static void ArcLaunchKeyboardBridgeObserveKeyboard(void) {
     NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
     void (^post)(BOOL) = ^(BOOL visible) {
@@ -70,6 +70,10 @@ static void ArcLaunchKeyboardBridgeObserveKeyboard(void) {
     [center addObserverForName:UIKeyboardWillHideNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *notification) {
         post(NO);
     }];
+    [center addObserverForName:UIKeyboardWillChangeFrameNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *notification) {
+        CGRect endFrame = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+        post(!CGRectIsEmpty(endFrame) && CGRectIntersectsRect(UIScreen.mainScreen.bounds, endFrame));
+    }];
 }
 
 %group ArcLaunchGuestKeyboard
@@ -77,11 +81,19 @@ static void ArcLaunchKeyboardBridgeObserveKeyboard(void) {
 %hook UIKeyboardVisualModeManager
 
 - (BOOL)windowingModeEnabled {
-    return ArcLaunchKeyboardBridgeIsActive() ? YES : %orig;
+    uint64_t state = ArcLaunchKeyboardBridgeActiveState();
+    if ((state & ArcLaunchKeyboardBridgeFullScreenKeyboardFlag) && (state & ArcLaunchKeyboardBridgeNativeHostingFlag)) {
+        return NO;
+    }
+    return (state != 0 && (state & ArcLaunchKeyboardBridgeNativeHostingFlag) == 0) ? YES : %orig;
 }
 
 - (BOOL)useVisualModeWindowed {
-    return ArcLaunchKeyboardBridgeIsActive() ? YES : %orig;
+    uint64_t state = ArcLaunchKeyboardBridgeActiveState();
+    if ((state & ArcLaunchKeyboardBridgeFullScreenKeyboardFlag) && (state & ArcLaunchKeyboardBridgeNativeHostingFlag)) {
+        return NO;
+    }
+    return (state != 0 && (state & ArcLaunchKeyboardBridgeNativeHostingFlag) == 0) ? YES : %orig;
 }
 
 + (BOOL)windowingSoftwareKeyboardAllowed {

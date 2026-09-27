@@ -64,7 +64,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchBackdropStyle) {
 typedef NS_ENUM(NSInteger, ArcLaunchKeyboardDisplayMode) {
     /// 键盘随应用画面一起等比缩放，显示在小窗内。
     ArcLaunchKeyboardDisplayModeInWindow = 0,
-    /// 键盘弹出期间窗口临时铺满屏幕，键盘按原尺寸显示在屏幕底部，收起后恢复小窗。
+    /// 让系统键盘按设备屏幕布局显示；旧版场景通过临时铺满悬浮窗实现。
     ArcLaunchKeyboardDisplayModeFullScreen = 1,
 };
 
