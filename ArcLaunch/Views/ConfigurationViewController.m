@@ -554,7 +554,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
 - (UITableViewCell *)floatingHostCell {
     UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"FloatingHostCell"] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"FloatingHostCell"];
     cell.textLabel.text = @"悬浮分屏";
-    cell.detailTextLabel.text = self.hudSceneCoordinator.floatingHostDescription;
+    cell.detailTextLabel.text = self.hudSceneCoordinator.floatingHostStatusDescription;
     cell.detailTextLabel.numberOfLines = 0;
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
     return cell;

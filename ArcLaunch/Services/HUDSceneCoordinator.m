@@ -25,6 +25,9 @@ static const char * const ArcLaunchHUDProcessArgument = "-hud";
 static const char * const ArcLaunchStopProcessArgument = "-stop-hud";
 static NSString * const ArcLaunchHUDProcessIdentifierDefaultsKey = @"ArcLaunchHUDProcessIdentifier";
 static NSString * const ArcLaunchHUDCapabilityVersionDefaultsKey = @"ArcLaunchHUDCapabilityVersion";
+static NSString * const ArcLaunchHUDReadyProcessIdentifierStorageKey = @"HUDReadyProcessIdentifier";
+static NSString * const ArcLaunchHUDStatusDescriptionStorageKey = @"HUDStatusDescription";
+static NSString * const ArcLaunchFloatingHostStatusStorageKey = @"FloatingHostStatus";
 static const uid_t ArcLaunchApplicationPersonaIdentifier = 99;
 static const uint32_t ArcLaunchApplicationPersonaFlags = 1;
 static const short ArcLaunchApplicationSpawnFlags = 2;
@@ -135,12 +138,6 @@ BOOL ArcLaunchIsHUDProcess(void) {
     return [NSProcessInfo.processInfo.arguments containsObject:argument];
 }
 
-static void ArcLaunchRemoveObsoleteStatusFiles(void) {
-    [ArcLaunchSharedStorage removeDataForKey:@"FloatingHostStatus"];
-    [ArcLaunchSharedStorage removeDataForKey:@"HUDReadyProcessIdentifier"];
-    [ArcLaunchSharedStorage removeDataForKey:@"HUDStatusDescription"];
-}
-
 #pragma mark - 悬浮分屏宿主
 
 static BOOL ArcLaunchFloatingAppHostingReady;
@@ -149,11 +146,19 @@ BOOL ArcLaunchFloatingAppHostingAvailable(void) {
     return ArcLaunchFloatingAppHostingReady;
 }
 
+static void ArcLaunchSetFloatingHostStatus(NSString *status) {
+    NSData *statusData = [status dataUsingEncoding:NSUTF8StringEncoding];
+    if (statusData) {
+        [ArcLaunchSharedStorage setData:statusData forKey:ArcLaunchFloatingHostStatusStorageKey];
+    }
+}
+
 // 让 HUD 进程像 FrontBoardAppLauncher 那样成为 FrontBoard 场景宿主，才能托管其它应用的场景。
 // 必须在 UIKit 初始化之前调用；仅在悬浮分屏总开关开启时初始化宿主。
-static BOOL ArcLaunchInitializeFloatingAppHosting(void) {
+static void ArcLaunchInitializeFloatingAppHosting(void) {
     if (!ArcLaunchSettingsStore.sharedStore.settings.shouldEnableFloatingAppHosting) {
-        return NO;
+        [ArcLaunchSharedStorage removeDataForKey:ArcLaunchFloatingHostStatusStorageKey];
+        return;
     }
     void *frontBoard = dlopen("/System/Library/PrivateFrameworks/FrontBoard.framework/FrontBoard", RTLD_LAZY | RTLD_GLOBAL);
     dlopen("/System/Library/PrivateFrameworks/FrontBoardServices.framework/FrontBoardServices", RTLD_LAZY | RTLD_GLOBAL);
@@ -163,17 +168,18 @@ static BOOL ArcLaunchInitializeFloatingAppHosting(void) {
     typedef void (*ArcLaunchSystemShellInitializeFunction)(id);
     ArcLaunchSystemShellInitializeFunction initializeSystemShell = (ArcLaunchSystemShellInitializeFunction)dlsym(frontBoard ?: RTLD_DEFAULT, "FBSystemShellInitialize");
     if (!initializeSystemShell) {
-        NSLog(@"悬浮分屏不可用：系统缺少 FBSystemShellInitialize。");
-        return NO;
+        ArcLaunchSetFloatingHostStatus(@"悬浮分屏不可用：系统缺少 FBSystemShellInitialize。");
+        return;
     }
     for (NSString *className in @[@"FBSceneManager", @"FBProcessManager", @"RBSProcessHandle", @"FBApplicationProcessLaunchTransaction"]) {
         if (!NSClassFromString(className)) {
-            NSLog(@"悬浮分屏不可用：系统缺少 %@。", className);
-            return NO;
+            ArcLaunchSetFloatingHostStatus([NSString stringWithFormat:@"悬浮分屏不可用：系统缺少 %@。", className]);
+            return;
         }
     }
     initializeSystemShell(nil);
-    return YES;
+    ArcLaunchFloatingAppHostingReady = YES;
+    ArcLaunchSetFloatingHostStatus(@"悬浮分屏宿主已就绪。");
 }
 
 #pragma mark - HUD 插件进程
@@ -306,7 +312,7 @@ static void ArcLaunchInstallHUDEventDispatcher(UIApplication *application) {
 
 int ArcLaunchRunHUDProcess(void) {
     // FrontBoardAppLauncher 在 UIApplicationMain 之前初始化 system shell，这里同样放在所有 UIKit 初始化之前。
-    ArcLaunchFloatingAppHostingReady = ArcLaunchInitializeFloatingAppHosting();
+    ArcLaunchInitializeFloatingAppHosting();
 
     void *graphicsServices = dlopen("/System/Library/PrivateFrameworks/GraphicsServices.framework/GraphicsServices", RTLD_LAZY | RTLD_GLOBAL);
     void *backBoardServices = dlopen("/System/Library/PrivateFrameworks/BackBoardServices.framework/BackBoardServices", RTLD_LAZY | RTLD_GLOBAL);
@@ -440,9 +446,6 @@ int ArcLaunchStopHUDProcessMain(pid_t processIdentifier) {
         _applicationBridge = applicationBridge;
         _statusDescription = @"尚未启动 HUD。";
         _appliedFloatingAppHostingEnabled = settingsStore.settings.shouldEnableFloatingAppHosting;
-        if (!ArcLaunchIsHUDProcess()) {
-            ArcLaunchRemoveObsoleteStatusFiles();
-        }
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(settingsDidChange:) name:ArcLaunchSettingsDidChangeNotification object:settingsStore];
     }
     return self;
@@ -454,17 +457,10 @@ int ArcLaunchStopHUDProcessMain(pid_t processIdentifier) {
 
 - (void)setStatusDescription:(NSString *)statusDescription {
     _statusDescription = [statusDescription copy];
-}
-
-- (NSString *)statusDescription {
-    if (ArcLaunchIsHUDProcess()) {
-        return _statusDescription;
+    if (ArcLaunchIsHUDProcess() && _statusDescription.length > 0) {
+        NSData *statusData = [_statusDescription dataUsingEncoding:NSUTF8StringEncoding];
+        [ArcLaunchSharedStorage setData:statusData forKey:ArcLaunchHUDStatusDescriptionStorageKey];
     }
-    pid_t processIdentifier = (pid_t)[NSUserDefaults.standardUserDefaults integerForKey:ArcLaunchHUDProcessIdentifierDefaultsKey];
-    if (processIdentifier > 0 && ![self hasLiveHUDProcess]) {
-        return @"HUD 子进程已退出。";
-    }
-    return _statusDescription;
 }
 
 - (void)installTerminationHandler {
@@ -509,11 +505,32 @@ int ArcLaunchStopHUDProcessMain(pid_t processIdentifier) {
         NSLog(@"ArcLaunch HUD window registration failed: %@", self.statusDescription);
         return;
     }
+    NSData *readyData = [[NSString stringWithFormat:@"%d", getpid()] dataUsingEncoding:NSUTF8StringEncoding];
+    [ArcLaunchSharedStorage setData:readyData forKey:ArcLaunchHUDReadyProcessIdentifierStorageKey];
     self.statusDescription = @"HUD 窗口已注册到 SpringBoard。";
 }
 
 - (BOOL)isHUDActive {
-    return [self hasLiveHUDProcess];
+    if (![self hasLiveHUDProcess]) {
+        NSData *statusData = [ArcLaunchSharedStorage dataForKey:ArcLaunchHUDStatusDescriptionStorageKey];
+        NSString *childStatus = [[NSString alloc] initWithData:statusData encoding:NSUTF8StringEncoding];
+        self.statusDescription = childStatus.length > 0 ? [NSString stringWithFormat:@"HUD 子进程已退出；最后阶段：%@", childStatus] : @"HUD 子进程未运行。";
+        return NO;
+    }
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    pid_t processIdentifier = (pid_t)[defaults integerForKey:ArcLaunchHUDProcessIdentifierDefaultsKey];
+    NSData *readyData = [ArcLaunchSharedStorage dataForKey:ArcLaunchHUDReadyProcessIdentifierStorageKey];
+    BOOL ready = (pid_t)[[[NSString alloc] initWithData:readyData encoding:NSUTF8StringEncoding] intValue] == processIdentifier;
+    NSData *statusData = [ArcLaunchSharedStorage dataForKey:ArcLaunchHUDStatusDescriptionStorageKey];
+    NSString *childStatus = [[NSString alloc] initWithData:statusData encoding:NSUTF8StringEncoding];
+    if (childStatus.length > 0) {
+        self.statusDescription = childStatus;
+    } else if (ready) {
+        self.statusDescription = @"HUD 窗口已注册到 SpringBoard。";
+    } else {
+        self.statusDescription = @"HUD 子进程已启动，正在注册 SpringBoard 窗口。";
+    }
+    return ready;
 }
 
 - (void)activateHUD {
@@ -615,6 +632,7 @@ int ArcLaunchStopHUDProcessMain(pid_t processIdentifier) {
     window.hidden = YES;
     window.rootViewController = nil;
     self.hudWindow = nil;
+    [ArcLaunchSharedStorage removeDataForKey:ArcLaunchHUDReadyProcessIdentifierStorageKey];
     self.statusDescription = @"HUD 窗口已注销，子进程正在退出。";
 }
 
@@ -679,7 +697,8 @@ int ArcLaunchStopHUDProcessMain(pid_t processIdentifier) {
             NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
             if (stopped && [defaults integerForKey:ArcLaunchHUDProcessIdentifierDefaultsKey] == processIdentifier) {
                 [defaults removeObjectForKey:ArcLaunchHUDProcessIdentifierDefaultsKey];
-                ArcLaunchRemoveObsoleteStatusFiles();
+                [ArcLaunchSharedStorage removeDataForKey:ArcLaunchHUDReadyProcessIdentifierStorageKey];
+                [ArcLaunchSharedStorage removeDataForKey:ArcLaunchHUDStatusDescriptionStorageKey];
                 [defaults synchronize];
             }
             self.hudProcessStopping = NO;
@@ -773,11 +792,13 @@ int ArcLaunchStopHUDProcessMain(pid_t processIdentifier) {
     }
 }
 
-- (NSString *)floatingHostDescription {
+- (NSString *)floatingHostStatusDescription {
     if (!self.settingsStore.settings.floatingSplitEnabled) {
         return @"已关闭：快捷应用将全屏打开，悬浮分屏宿主不会启动。";
     }
-    return @"HUD 子进程启动时尝试初始化宿主；宿主不可用时快捷应用将全屏打开。";
+    NSData *statusData = [ArcLaunchSharedStorage dataForKey:ArcLaunchFloatingHostStatusStorageKey];
+    NSString *status = [[NSString alloc] initWithData:statusData encoding:NSUTF8StringEncoding];
+    return status.length > 0 ? status : @"等待 HUD 子进程初始化悬浮分屏宿主。";
 }
 
 - (BOOL)spawnHUDProcess {
@@ -789,6 +810,8 @@ int ArcLaunchStopHUDProcessMain(pid_t processIdentifier) {
 
     const char *executable = executablePath.fileSystemRepresentation;
     char *arguments[] = { (char *)executable, (char *)ArcLaunchHUDProcessArgument, NULL };
+    [ArcLaunchSharedStorage removeDataForKey:ArcLaunchHUDReadyProcessIdentifierStorageKey];
+    [ArcLaunchSharedStorage removeDataForKey:ArcLaunchHUDStatusDescriptionStorageKey];
 
     pid_t processIdentifier = 0;
     BOOL usingPersona = NO;
@@ -843,22 +866,16 @@ int ArcLaunchStopHUDProcessMain(pid_t processIdentifier) {
     int processStatus = 0;
     if (waitpid(processIdentifier, &processStatus, WNOHANG) == processIdentifier) {
         [NSUserDefaults.standardUserDefaults removeObjectForKey:ArcLaunchHUDProcessIdentifierDefaultsKey];
-        ArcLaunchRemoveObsoleteStatusFiles();
+        [ArcLaunchSharedStorage removeDataForKey:ArcLaunchHUDReadyProcessIdentifierStorageKey];
         [NSUserDefaults.standardUserDefaults synchronize];
-        if (!ArcLaunchIsHUDProcess()) {
-            _statusDescription = @"HUD 子进程已退出。";
-        }
         return NO;
     }
     if (kill(processIdentifier, 0) == 0 || errno == EPERM) {
         return YES;
     }
     [NSUserDefaults.standardUserDefaults removeObjectForKey:ArcLaunchHUDProcessIdentifierDefaultsKey];
-    ArcLaunchRemoveObsoleteStatusFiles();
+    [ArcLaunchSharedStorage removeDataForKey:ArcLaunchHUDReadyProcessIdentifierStorageKey];
     [NSUserDefaults.standardUserDefaults synchronize];
-    if (!ArcLaunchIsHUDProcess()) {
-        _statusDescription = @"HUD 子进程已退出。";
-    }
     return NO;
 }
 
