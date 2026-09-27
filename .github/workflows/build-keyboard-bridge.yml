@@ -48,6 +48,7 @@ jobs:
           filters="$stage/var/jb/Library/MobileSubstrate/DynamicLibraries"
           for tweak in ArcLaunchHUDKeyboardHost ArcLaunchGuestKeyboardBridge; do
             test -s "$filters/$tweak.dylib"
+            lipo -verify_arch arm64 arm64e "$filters/$tweak.dylib"
             test -s "$filters/$tweak.plist"
           done
 
