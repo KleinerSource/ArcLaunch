@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   build:
-    name: Build RootHide tweak package
+    name: Build jailbreak variants
     runs-on: macos-15
     steps:
       - name: Check out source
@@ -37,7 +37,7 @@ jobs:
           echo "THEOS=$THEOS" >> "$GITHUB_ENV"
           echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
 
-      - name: Build rootless and RootHide packages
+      - name: Build rootful, rootless, and RootHide packages
         run: |
           set -euo pipefail
           artifact_dir="$RUNNER_TEMP/ArcLaunchKeyboardBridge"
@@ -45,8 +45,9 @@ jobs:
 
           build_package() {
             local arch="$1"
-            local scheme="$2"
-            local package_arch="$3"
+            local variant="$2"
+            local scheme="$3"
+            local package_arch="$4"
             gmake -C KeyboardBridgeTweak clean THEOS_PACKAGE_SCHEME="$scheme"
             rm -f KeyboardBridgeTweak/packages/*.deb
             gmake -C KeyboardBridgeTweak package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME="$scheme" ARCHS="$arch" THEOS_PACKAGE_ARCH="$package_arch"
@@ -58,22 +59,41 @@ jobs:
             stage="$(mktemp -d)"
             dpkg-deb -x "$package" "$stage"
             local filters
-            if [[ "$scheme" == "roothide" ]]; then
-              filters="$stage/Library/MobileSubstrate/DynamicLibraries"
-            else
-              filters="$stage/var/jb/Library/MobileSubstrate/DynamicLibraries"
-            fi
+            case "$variant" in
+              rootless) filters="$stage/var/jb/Library/MobileSubstrate/DynamicLibraries" ;;
+              rootful|roothide) filters="$stage/Library/MobileSubstrate/DynamicLibraries" ;;
+              *) echo "Unsupported package variant: $variant" >&2; return 1 ;;
+            esac
             test -s "$filters/ArcLaunchGuestKeyboardBridge.dylib"
             lipo "$filters/ArcLaunchGuestKeyboardBridge.dylib" -verify_arch "$arch"
             test -s "$filters/ArcLaunchGuestKeyboardBridge.plist"
-            cp "$package" "$artifact_dir/ArcLaunchKeyboardBridge-${arch}-${scheme}.deb"
+            cp "$package" "$artifact_dir/ArcLaunchKeyboardBridge-${arch}-${variant}.deb"
           }
 
-          build_package arm64 rootless iphoneos-arm64
-          build_package arm64e rootless iphoneos-arm64e
-          build_package arm64e roothide iphoneos-arm64e
+          build_package arm64 rootful "" iphoneos-arm
+          build_package arm64e rootful "" iphoneos-arm
+          build_package arm64 rootless rootless iphoneos-arm64
+          build_package arm64e rootless rootless iphoneos-arm64
+          build_package arm64 roothide roothide iphoneos-arm64e
+          build_package arm64e roothide roothide iphoneos-arm64e
 
-      - name: Upload arm64 package
+      - name: Upload arm64 rootful package
+        uses: actions/upload-artifact@v7
+        with:
+          name: ArcLaunchKeyboardBridge-arm64-rootful
+          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-arm64-rootful.deb
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload arm64e rootful package
+        uses: actions/upload-artifact@v7
+        with:
+          name: ArcLaunchKeyboardBridge-arm64e-rootful
+          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-arm64e-rootful.deb
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload arm64 rootless package
         uses: actions/upload-artifact@v7
         with:
           name: ArcLaunchKeyboardBridge-arm64-rootless
@@ -86,6 +106,14 @@ jobs:
         with:
           name: ArcLaunchKeyboardBridge-arm64e-rootless
           path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-arm64e-rootless.deb
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload arm64 RootHide package
+        uses: actions/upload-artifact@v7
+        with:
+          name: ArcLaunchKeyboardBridge-arm64-roothide
+          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-arm64-roothide.deb
           if-no-files-found: error
           retention-days: 30
 
