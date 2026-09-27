@@ -32,8 +32,8 @@ typedef NS_ENUM(NSInteger, ArcLaunchAppearanceRow) {
 
 typedef NS_ENUM(NSInteger, ArcLaunchTriggerRow) {
     ArcLaunchTriggerRowMode = 0,
-    ArcLaunchTriggerRowAreaSize = 1,
-    ArcLaunchTriggerRowLandscape = 2,
+    ArcLaunchTriggerRowLandscape = 1,
+    ArcLaunchTriggerRowAreaSize = 2,
     ArcLaunchTriggerRowFineTuning = 3,
     ArcLaunchTriggerRowHorizontalPosition = 4,
     ArcLaunchTriggerRowVerticalPosition = 5,
@@ -142,7 +142,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
             if (self.settingsStore.settings.menuTriggerMode == ArcLaunchMenuTriggerModeFixedCorners) {
                 return ArcLaunchTriggerRowCount - 1 - (self.triggerFineTuningExpanded ? 0 : ArcLaunchTriggerFineTuningRowCount);
             }
-            return ArcLaunchTriggerRowLandscape + 1;
+            return ArcLaunchTriggerRowAreaSize + 1;
         case ArcLaunchConfigurationSectionAppearance: return ArcLaunchAppearanceRowCount;
         case ArcLaunchConfigurationSectionLayout: return ArcLaunchLayoutRowCount;
         case ArcLaunchConfigurationSectionFloatingSplit: return ArcLaunchFloatingSplitRowCount;

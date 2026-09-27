@@ -309,10 +309,16 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 }
 
 - (void)reloadFromSettings {
-    if (!self.isViewLoaded || self.dragging) {
+    if (!self.isViewLoaded) {
         return;
     }
     ArcLaunchSettings *settings = self.settingsStore.settings;
+    if (!settings.floatingSplitEnabled) {
+        [self cancelFloatingModeTimer];
+    }
+    if (self.dragging) {
+        return;
+    }
     self.floatingWindowManager.handleStyle = settings.handleStyle;
     self.floatingWindowManager.keyboardDisplayMode = settings.keyboardDisplayMode;
     // 只比较应用集合，不比较顺序：在设置页的排序编辑器里调整顺序时，悬浮条不必再叠加一份预览。

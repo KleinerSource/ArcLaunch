@@ -78,8 +78,6 @@ typedef NS_ENUM(NSInteger, ArcLaunchKeyboardDisplayMode) {
 @property (nonatomic, copy, readonly) NSUUID *identifier;
 @property (nonatomic, copy) NSString *bundleIdentifier;
 @property (nonatomic, copy) NSString *displayName;
-/// 兼容旧版本逐应用开关数据；新版本不再读取此值来决定启动方式。
-@property (nonatomic) BOOL opensInFloatingWindow;
 
 - (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier displayName:(NSString *)displayName;
 - (NSDictionary<NSString *, id> *)dictionaryRepresentation;
@@ -120,8 +118,6 @@ typedef NS_ENUM(NSInteger, ArcLaunchKeyboardDisplayMode) {
 @property (nonatomic) CGFloat backdropBlur;
 @property (nonatomic, strong) NSMutableArray<ArcLaunchShortcut *> *shortcuts;
 
-/// 兼容旧版本逐应用开关数据；不再用于决定悬浮窗口模式。
-@property (nonatomic, readonly) BOOL hasFloatingWindowShortcuts;
 /// 悬浮分屏总开关开启时，HUD 子进程初始化宿主。
 @property (nonatomic, readonly) BOOL shouldEnableFloatingAppHosting;
 

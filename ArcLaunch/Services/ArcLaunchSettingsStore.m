@@ -143,15 +143,4 @@ static const char * const ArcLaunchSettingsDarwinNotification = "com.kleinersour
     }];
 }
 
-- (void)setShortcutAtIndex:(NSUInteger)index opensInFloatingWindow:(BOOL)opensInFloatingWindow {
-    if (index >= self.settings.shortcuts.count || self.settings.shortcuts[index].opensInFloatingWindow == opensInFloatingWindow) {
-        return;
-    }
-    [self mutateSettings:^(ArcLaunchSettings *settings) {
-        if (index < settings.shortcuts.count) {
-            settings.shortcuts[index].opensInFloatingWindow = opensInFloatingWindow;
-        }
-    }];
-}
-
 @end
