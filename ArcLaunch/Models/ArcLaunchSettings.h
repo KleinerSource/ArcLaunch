@@ -23,6 +23,9 @@ FOUNDATION_EXPORT const CGFloat ArcLaunchMaximumFloatingWindowDwellDuration;
 FOUNDATION_EXPORT const CGFloat ArcLaunchDefaultFloatingWindowDwellDuration;
 FOUNDATION_EXPORT const CGFloat ArcLaunchMinimumFixedTriggerInset;
 FOUNDATION_EXPORT const CGFloat ArcLaunchMaximumFixedTriggerInset;
+FOUNDATION_EXPORT const CGFloat ArcLaunchMinimumFixedTriggerDimension;
+FOUNDATION_EXPORT const CGFloat ArcLaunchMaximumFixedTriggerDimension;
+FOUNDATION_EXPORT const CGFloat ArcLaunchDefaultFixedTriggerDimension;
 FOUNDATION_EXPORT const CGFloat ArcLaunchMinimumFixedTriggerCornerRadius;
 FOUNDATION_EXPORT const CGFloat ArcLaunchMaximumFixedTriggerCornerRadius;
 
@@ -95,9 +98,12 @@ typedef NS_ENUM(NSInteger, ArcLaunchKeyboardDisplayMode) {
 @property (nonatomic) ArcLaunchMenuTriggerMode menuTriggerMode;
 @property (nonatomic) ArcLaunchFixedTriggerCorner fixedTriggerCorners;
 @property (nonatomic) BOOL landscapeTriggerEnabled;
+@property (nonatomic) CGFloat fixedTriggerWidth;
+@property (nonatomic) CGFloat fixedTriggerHeight;
+/// 固定位置热区相对屏幕对应边缘的偏移。
 @property (nonatomic) CGFloat fixedTriggerHorizontalInset;
 @property (nonatomic) CGFloat fixedTriggerVerticalInset;
-/// 固定位置触发区域的圆角半径；最大值为热区半径时呈圆形。
+/// 固定位置触发区域的圆角半径；最大值受宽高较短边的一半限制。
 @property (nonatomic) CGFloat fixedTriggerCornerRadius;
 @property (nonatomic) ArcLaunchEdge edge;
 @property (nonatomic) CGFloat normalizedVerticalPosition;

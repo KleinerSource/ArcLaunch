@@ -34,15 +34,19 @@ typedef NS_ENUM(NSInteger, ArcLaunchTriggerRow) {
     ArcLaunchTriggerRowMode = 0,
     ArcLaunchTriggerRowAreaSize = 1,
     ArcLaunchTriggerRowLandscape = 2,
-    ArcLaunchTriggerRowHorizontalInset = 3,
-    ArcLaunchTriggerRowVerticalInset = 4,
-    ArcLaunchTriggerRowCornerRadius = 5,
-    ArcLaunchTriggerRowTopLeft = 6,
-    ArcLaunchTriggerRowTopRight = 7,
-    ArcLaunchTriggerRowBottomLeft = 8,
-    ArcLaunchTriggerRowBottomRight = 9,
-    ArcLaunchTriggerRowCount = 10,
+    ArcLaunchTriggerRowFineTuning = 3,
+    ArcLaunchTriggerRowHorizontalPosition = 4,
+    ArcLaunchTriggerRowVerticalPosition = 5,
+    ArcLaunchTriggerRowCornerRadius = 6,
+    ArcLaunchTriggerRowWidth = 7,
+    ArcLaunchTriggerRowHeight = 8,
+    ArcLaunchTriggerRowTopLeft = 9,
+    ArcLaunchTriggerRowTopRight = 10,
+    ArcLaunchTriggerRowBottomLeft = 11,
+    ArcLaunchTriggerRowBottomRight = 12,
+    ArcLaunchTriggerRowCount = 13,
 };
+static const NSInteger ArcLaunchTriggerFineTuningRowCount = 5;
 
 typedef NS_ENUM(NSInteger, ArcLaunchLayoutRow) {
     ArcLaunchLayoutRowIconSize = 0,
@@ -85,6 +89,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
 @property (nonatomic, strong) ArcLaunchUpdateChecker *updateChecker;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, UIImage *> *listIconsByBundleIdentifier;
 @property (nonatomic) BOOL adjustingSlider;
+@property (nonatomic) BOOL triggerFineTuningExpanded;
 @property (nonatomic, strong) UISelectionFeedbackGenerator *sliderFeedbackGenerator;
 @end
 
@@ -134,7 +139,10 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
     switch (section) {
         case ArcLaunchConfigurationSectionHUD: return 1;
         case ArcLaunchConfigurationSectionTrigger:
-            return self.settingsStore.settings.menuTriggerMode == ArcLaunchMenuTriggerModeFixedCorners ? ArcLaunchTriggerRowCount : ArcLaunchTriggerRowLandscape + 1;
+            if (self.settingsStore.settings.menuTriggerMode == ArcLaunchMenuTriggerModeFixedCorners) {
+                return ArcLaunchTriggerRowCount - 1 - (self.triggerFineTuningExpanded ? 0 : ArcLaunchTriggerFineTuningRowCount);
+            }
+            return ArcLaunchTriggerRowLandscape + 1;
         case ArcLaunchConfigurationSectionAppearance: return ArcLaunchAppearanceRowCount;
         case ArcLaunchConfigurationSectionLayout: return ArcLaunchLayoutRowCount;
         case ArcLaunchConfigurationSectionFloatingSplit: return ArcLaunchFloatingSplitRowCount;
@@ -164,7 +172,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
         case ArcLaunchConfigurationSectionHUD:
             return @"悬浮条位于屏幕边缘内侧。从悬浮条向内滑动展开扇形菜单，滑到图标上会显示名称并震动；停留后松手可按悬浮分屏等待时间选择悬浮窗打开，在空白处松手则取消。长按不移动回到此设置页，长按后拖动可调整位置。锁屏界面会自动隐藏悬浮条。";
         case ArcLaunchConfigurationSectionTrigger:
-            return @"把手模式沿用当前可拖动悬浮条，热区为矩形。固定位置模式可同时启用多个屏幕角落，触发热区可从直角调至圆形，并自动避开系统边缘手势；水平和垂直内缩会在安全距离基础上统一应用到所有已选角落。关闭横屏触发后，横屏时不会拦截游戏触摸。";
+            return @"把手模式沿用当前可拖动悬浮条，热区为矩形。固定位置模式可同时启用多个屏幕角落；水平位置、垂直位置、边缘弧度、宽度和高度收在“触发器微调”中，并统一应用到所有已选角落。位置以对应屏幕边缘为基准。关闭横屏触发后，横屏时不会拦截游戏触摸。";
         case ArcLaunchConfigurationSectionAppearance:
             return @"“自动”跟随系统的浅色/深色模式。悬浮条设为隐藏后，边缘的触摸区域仍然有效。模糊程度控制毛玻璃的模糊强度，调整时会实时预览。";
         case ArcLaunchConfigurationSectionLayout:
@@ -249,9 +257,41 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
     }
 }
 
+- (NSInteger)triggerControlRowForTableRow:(NSInteger)tableRow {
+    if (self.settingsStore.settings.menuTriggerMode != ArcLaunchMenuTriggerModeFixedCorners) {
+        return tableRow;
+    }
+    switch (tableRow) {
+        case 0: return ArcLaunchTriggerRowMode;
+        case 1: return ArcLaunchTriggerRowLandscape;
+        case 2: return ArcLaunchTriggerRowFineTuning;
+        default: return tableRow + (self.triggerFineTuningExpanded ? 1 : 6);
+    }
+}
+
+- (NSInteger)tableRowForTriggerControlRow:(NSInteger)controlRow {
+    if (self.settingsStore.settings.menuTriggerMode != ArcLaunchMenuTriggerModeFixedCorners) {
+        return controlRow;
+    }
+    switch (controlRow) {
+        case ArcLaunchTriggerRowMode: return 0;
+        case ArcLaunchTriggerRowLandscape: return 1;
+        case ArcLaunchTriggerRowFineTuning: return 2;
+        case ArcLaunchTriggerRowWidth:
+        case ArcLaunchTriggerRowHeight:
+        case ArcLaunchTriggerRowHorizontalPosition:
+        case ArcLaunchTriggerRowVerticalPosition:
+        case ArcLaunchTriggerRowCornerRadius:
+            return self.triggerFineTuningExpanded ? controlRow - 1 : NSNotFound;
+        default:
+            return self.triggerFineTuningExpanded ? controlRow - 1 : controlRow - 6;
+    }
+}
+
 - (UITableViewCell *)triggerCellForRow:(NSInteger)row {
     ArcLaunchSettings *settings = self.settingsStore.settings;
-    if (row == ArcLaunchTriggerRowMode) {
+    NSInteger controlRow = [self triggerControlRowForTableRow:row];
+    if (controlRow == ArcLaunchTriggerRowMode) {
         UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"TriggerModeCell"] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"TriggerModeCell"];
         UISegmentedControl *control = [cell.accessoryView isKindOfClass:UISegmentedControl.class] ? (UISegmentedControl *)cell.accessoryView : nil;
         if (!control) {
@@ -266,7 +306,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
         return cell;
     }
 
-    if (row == ArcLaunchTriggerRowAreaSize) {
+    if (controlRow == ArcLaunchTriggerRowAreaSize) {
         UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"TriggerAreaSizeCell"] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"TriggerAreaSizeCell"];
         UISlider *slider = [cell.accessoryView isKindOfClass:UISlider.class] ? (UISlider *)cell.accessoryView : nil;
         if (!slider) {
@@ -278,12 +318,12 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
         }
         slider.value = settings.handleTouchRadius;
         cell.textLabel.text = @"触发区域大小";
-        cell.detailTextLabel.text = [self triggerAreaSizeText:settings.handleTouchRadius fixed:settings.menuTriggerMode == ArcLaunchMenuTriggerModeFixedCorners];
+        cell.detailTextLabel.text = [self triggerAreaSizeText:settings.handleTouchRadius];
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
         return cell;
     }
 
-    if (row == ArcLaunchTriggerRowLandscape) {
+    if (controlRow == ArcLaunchTriggerRowLandscape) {
         UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"LandscapeTriggerCell"] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"LandscapeTriggerCell"];
         UISwitch *toggle = [cell.accessoryView isKindOfClass:UISwitch.class] ? (UISwitch *)cell.accessoryView : nil;
         if (!toggle) {
@@ -297,28 +337,56 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
         return cell;
     }
 
-    if (row == ArcLaunchTriggerRowHorizontalInset || row == ArcLaunchTriggerRowVerticalInset) {
-        BOOL horizontal = row == ArcLaunchTriggerRowHorizontalInset;
-        UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"TriggerInsetCell"] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"TriggerInsetCell"];
+    if (controlRow == ArcLaunchTriggerRowFineTuning) {
+        UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"TriggerFineTuningCell"] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:@"TriggerFineTuningCell"];
+        cell.textLabel.text = @"触发器微调";
+        cell.detailTextLabel.text = self.triggerFineTuningExpanded ? @"收起" : @"展开";
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+        cell.selectionStyle = UITableViewCellSelectionStyleDefault;
+        return cell;
+    }
+
+    if (controlRow == ArcLaunchTriggerRowWidth || controlRow == ArcLaunchTriggerRowHeight) {
+        BOOL width = controlRow == ArcLaunchTriggerRowWidth;
+        UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"TriggerDimensionCell"] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"TriggerDimensionCell"];
+        UISlider *slider = [cell.accessoryView isKindOfClass:UISlider.class] ? (UISlider *)cell.accessoryView : nil;
+        if (!slider) {
+            slider = [[UISlider alloc] initWithFrame:CGRectMake(0.0, 0.0, 150.0, 32.0)];
+            slider.minimumValue = ArcLaunchMinimumFixedTriggerDimension;
+            slider.maximumValue = ArcLaunchMaximumFixedTriggerDimension;
+            [slider addTarget:self action:@selector(fixedTriggerDimensionChanged:) forControlEvents:UIControlEventValueChanged];
+            cell.accessoryView = slider;
+        }
+        CGFloat dimension = width ? settings.fixedTriggerWidth : settings.fixedTriggerHeight;
+        slider.tag = controlRow;
+        slider.value = dimension;
+        cell.textLabel.text = width ? @"触发区域宽度" : @"触发区域高度";
+        cell.detailTextLabel.text = [NSString stringWithFormat:@"%.0f pt", dimension];
+        cell.selectionStyle = UITableViewCellSelectionStyleNone;
+        return cell;
+    }
+
+    if (controlRow == ArcLaunchTriggerRowHorizontalPosition || controlRow == ArcLaunchTriggerRowVerticalPosition) {
+        BOOL horizontal = controlRow == ArcLaunchTriggerRowHorizontalPosition;
+        UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"TriggerPositionCell"] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"TriggerPositionCell"];
         UISlider *slider = [cell.accessoryView isKindOfClass:UISlider.class] ? (UISlider *)cell.accessoryView : nil;
         if (!slider) {
             slider = [[UISlider alloc] initWithFrame:CGRectMake(0.0, 0.0, 150.0, 32.0)];
             slider.minimumValue = ArcLaunchMinimumFixedTriggerInset;
             slider.maximumValue = ArcLaunchMaximumFixedTriggerInset;
-            slider.tag = row;
-            [slider addTarget:self action:@selector(fixedTriggerInsetChanged:) forControlEvents:UIControlEventValueChanged];
+            [slider addTarget:self action:@selector(fixedTriggerPositionChanged:) forControlEvents:UIControlEventValueChanged];
             cell.accessoryView = slider;
         }
-        CGFloat inset = horizontal ? settings.fixedTriggerHorizontalInset : settings.fixedTriggerVerticalInset;
-        slider.tag = row;
-        slider.value = inset;
-        cell.textLabel.text = horizontal ? @"水平内缩" : @"垂直内缩";
-        cell.detailTextLabel.text = [NSString stringWithFormat:@"%.0f pt", inset];
+        CGFloat position = horizontal ? settings.fixedTriggerHorizontalInset : settings.fixedTriggerVerticalInset;
+        slider.tag = controlRow;
+        slider.value = position;
+        cell.textLabel.text = horizontal ? @"水平位置" : @"垂直位置";
+        cell.detailTextLabel.text = [NSString stringWithFormat:@"%.0f pt", position];
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
         return cell;
     }
 
-    if (row == ArcLaunchTriggerRowCornerRadius) {
+    if (controlRow == ArcLaunchTriggerRowCornerRadius) {
         UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"TriggerCornerRadiusCell"] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"TriggerCornerRadiusCell"];
         UISlider *slider = [cell.accessoryView isKindOfClass:UISlider.class] ? (UISlider *)cell.accessoryView : nil;
         if (!slider) {
@@ -327,18 +395,19 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
             [slider addTarget:self action:@selector(fixedTriggerCornerRadiusChanged:) forControlEvents:UIControlEventValueChanged];
             cell.accessoryView = slider;
         }
-        slider.maximumValue = settings.handleTouchRadius;
-        CGFloat radius = MIN(settings.fixedTriggerCornerRadius, settings.handleTouchRadius);
+        slider.maximumValue = MIN(settings.fixedTriggerWidth, settings.fixedTriggerHeight) / 2.0;
+        CGFloat radius = MIN(settings.fixedTriggerCornerRadius, slider.maximumValue);
+        slider.tag = controlRow;
         slider.value = radius;
         cell.textLabel.text = @"边缘弧度";
-        cell.detailTextLabel.text = [NSString stringWithFormat:@"%.0f pt", radius];
+        cell.detailTextLabel.text = [NSString stringWithFormat:@"%.1f pt", radius];
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
         return cell;
     }
 
     NSArray<NSString *> *cornerTitles = @[@"左上", @"右上", @"左下", @"右下"];
-    NSInteger cornerIndex = row - ArcLaunchTriggerRowTopLeft;
-    ArcLaunchFixedTriggerCorner corner = [self fixedTriggerCornerForRow:row];
+    NSInteger cornerIndex = controlRow - ArcLaunchTriggerRowTopLeft;
+    ArcLaunchFixedTriggerCorner corner = [self fixedTriggerCornerForRow:controlRow];
     UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"FixedTriggerCornerCell"] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"FixedTriggerCornerCell"];
     UISwitch *toggle = [cell.accessoryView isKindOfClass:UISwitch.class] ? (UISwitch *)cell.accessoryView : nil;
     if (!toggle) {
@@ -346,7 +415,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
         [toggle addTarget:self action:@selector(fixedTriggerCornerChanged:) forControlEvents:UIControlEventValueChanged];
         cell.accessoryView = toggle;
     }
-    toggle.tag = row;
+    toggle.tag = controlRow;
     toggle.on = (settings.fixedTriggerCorners & corner) != 0;
     cell.textLabel.text = [NSString stringWithFormat:@"%@触发", cornerTitles[cornerIndex]];
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
@@ -405,11 +474,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
     return index == 0 ? ArcLaunchHandleStyleAutomatic : index - 1;
 }
 
-- (NSString *)triggerAreaSizeText:(CGFloat)radius fixed:(BOOL)fixed {
-    if (fixed) {
-        CGFloat diameter = radius * 2.0;
-        return [NSString stringWithFormat:@"半径 %.0f pt · 圆形区域 %.0f × %.0f pt", radius, diameter, diameter];
-    }
+- (NSString *)triggerAreaSizeText:(CGFloat)radius {
     CGFloat width = ArcLaunchHandleEdgeInset + ArcLaunchHandleBarWidth / 2.0 + radius;
     CGFloat height = ArcLaunchHandleBarHeight + radius * 2.0;
     return [NSString stringWithFormat:@"%.0f pt · 矩形区域 %.0f × %.0f pt", radius, width, height];
@@ -606,7 +671,10 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    if (indexPath.section == ArcLaunchConfigurationSectionShortcuts && indexPath.row == ArcLaunchShortcutActionRowAdd) {
+    if (indexPath.section == ArcLaunchConfigurationSectionTrigger && self.settingsStore.settings.menuTriggerMode == ArcLaunchMenuTriggerModeFixedCorners && [self triggerControlRowForTableRow:indexPath.row] == ArcLaunchTriggerRowFineTuning) {
+        self.triggerFineTuningExpanded = !self.triggerFineTuningExpanded;
+        [tableView reloadSections:[NSIndexSet indexSetWithIndex:ArcLaunchConfigurationSectionTrigger] withRowAnimation:UITableViewRowAnimationAutomatic];
+    } else if (indexPath.section == ArcLaunchConfigurationSectionShortcuts && indexPath.row == ArcLaunchShortcutActionRowAdd) {
         [self showApplicationPicker];
     } else if (indexPath.section == ArcLaunchConfigurationSectionShortcuts && indexPath.row == ArcLaunchShortcutActionRowArrange) {
         if (self.settingsStore.settings.shortcuts.count > 1) {
@@ -764,7 +832,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
     CGFloat value = round(sender.value);
     NSIndexPath *indexPath = [NSIndexPath indexPathForRow:ArcLaunchTriggerRowAreaSize inSection:ArcLaunchConfigurationSectionTrigger];
     UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
-    cell.detailTextLabel.text = [self triggerAreaSizeText:value fixed:self.settingsStore.settings.menuTriggerMode == ArcLaunchMenuTriggerModeFixedCorners];
+    cell.detailTextLabel.text = [self triggerAreaSizeText:value];
 
     if (fabs(self.settingsStore.settings.handleTouchRadius - value) < 0.001) {
         return;
@@ -777,12 +845,47 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
     self.adjustingSlider = NO;
 }
 
-- (void)fixedTriggerInsetChanged:(UISlider *)sender {
+- (void)fixedTriggerDimensionChanged:(UISlider *)sender {
     CGFloat value = round(sender.value);
-    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:sender.tag inSection:ArcLaunchConfigurationSectionTrigger];
+    BOOL width = sender.tag == ArcLaunchTriggerRowWidth;
+    NSInteger tableRow = [self tableRowForTriggerControlRow:sender.tag];
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:tableRow inSection:ArcLaunchConfigurationSectionTrigger];
     UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
     cell.detailTextLabel.text = [NSString stringWithFormat:@"%.0f pt", value];
-    BOOL horizontal = sender.tag == ArcLaunchTriggerRowHorizontalInset;
+    CGFloat current = width ? self.settingsStore.settings.fixedTriggerWidth : self.settingsStore.settings.fixedTriggerHeight;
+    if (fabs(current - value) < 0.001) {
+        return;
+    }
+    [self playSliderStepFeedback:sender];
+    self.adjustingSlider = sender.isTracking;
+    [self.settingsStore mutateSettings:^(ArcLaunchSettings *settings) {
+        if (width) {
+            settings.fixedTriggerWidth = value;
+        } else {
+            settings.fixedTriggerHeight = value;
+        }
+    }];
+    self.adjustingSlider = NO;
+
+    NSInteger radiusRow = [self tableRowForTriggerControlRow:ArcLaunchTriggerRowCornerRadius];
+    NSIndexPath *radiusIndexPath = [NSIndexPath indexPathForRow:radiusRow inSection:ArcLaunchConfigurationSectionTrigger];
+    UITableViewCell *radiusCell = [self.tableView cellForRowAtIndexPath:radiusIndexPath];
+    UISlider *radiusSlider = [radiusCell.accessoryView isKindOfClass:UISlider.class] ? (UISlider *)radiusCell.accessoryView : nil;
+    if (radiusSlider) {
+        ArcLaunchSettings *settings = self.settingsStore.settings;
+        radiusSlider.maximumValue = MIN(settings.fixedTriggerWidth, settings.fixedTriggerHeight) / 2.0;
+        radiusSlider.value = settings.fixedTriggerCornerRadius;
+        radiusCell.detailTextLabel.text = [NSString stringWithFormat:@"%.1f pt", settings.fixedTriggerCornerRadius];
+    }
+}
+
+- (void)fixedTriggerPositionChanged:(UISlider *)sender {
+    CGFloat value = round(sender.value);
+    NSInteger tableRow = [self tableRowForTriggerControlRow:sender.tag];
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:tableRow inSection:ArcLaunchConfigurationSectionTrigger];
+    UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
+    cell.detailTextLabel.text = [NSString stringWithFormat:@"%.0f pt", value];
+    BOOL horizontal = sender.tag == ArcLaunchTriggerRowHorizontalPosition;
     CGFloat current = horizontal ? self.settingsStore.settings.fixedTriggerHorizontalInset : self.settingsStore.settings.fixedTriggerVerticalInset;
     if (fabs(current - value) < 0.001) {
         return;
@@ -800,11 +903,12 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
 }
 
 - (void)fixedTriggerCornerRadiusChanged:(UISlider *)sender {
-    CGFloat value = round(sender.value);
-    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:ArcLaunchTriggerRowCornerRadius inSection:ArcLaunchConfigurationSectionTrigger];
+    CGFloat value = MIN(round(sender.value), sender.maximumValue);
+    NSInteger tableRow = [self tableRowForTriggerControlRow:ArcLaunchTriggerRowCornerRadius];
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:tableRow inSection:ArcLaunchConfigurationSectionTrigger];
     UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
-    cell.detailTextLabel.text = [NSString stringWithFormat:@"%.0f pt", value];
-    CGFloat current = MIN(self.settingsStore.settings.fixedTriggerCornerRadius, self.settingsStore.settings.handleTouchRadius);
+    cell.detailTextLabel.text = [NSString stringWithFormat:@"%.1f pt", value];
+    CGFloat current = self.settingsStore.settings.fixedTriggerCornerRadius;
     if (fabs(current - value) < 0.001) {
         return;
     }

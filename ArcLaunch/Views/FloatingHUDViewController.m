@@ -320,7 +320,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
     NSString *shortcutIdentifiers = [sortedIdentifiers componentsJoinedByString:@","];
     NSString *menuLayoutSignature = [NSString stringWithFormat:@"%.2f|%.2f|%.2f|%@", settings.iconSize, settings.iconSpacing, settings.ringSpacing, shortcutIdentifiers];
     NSString *backdropSignature = [NSString stringWithFormat:@"%ld|%.2f", (long)settings.backdropStyle, settings.backdropBlur];
-    NSString *triggerSignature = [NSString stringWithFormat:@"%ld|%lu|%d|%.1f|%.1f|%.1f", (long)settings.menuTriggerMode, (unsigned long)settings.fixedTriggerCorners, settings.landscapeTriggerEnabled, settings.fixedTriggerHorizontalInset, settings.fixedTriggerVerticalInset, settings.fixedTriggerCornerRadius];
+    NSString *triggerSignature = [NSString stringWithFormat:@"%ld|%lu|%d|%.1f|%.1f|%.1f|%.1f|%.1f", (long)settings.menuTriggerMode, (unsigned long)settings.fixedTriggerCorners, settings.landscapeTriggerEnabled, settings.fixedTriggerWidth, settings.fixedTriggerHeight, settings.fixedTriggerHorizontalInset, settings.fixedTriggerVerticalInset, settings.fixedTriggerCornerRadius];
     BOOL menuLayoutChanged = self.hasAppliedSettings && ![menuLayoutSignature isEqualToString:self.appliedMenuLayoutSignature];
     BOOL backdropChanged = self.hasAppliedSettings && ![backdropSignature isEqualToString:self.appliedBackdropSignature];
     BOOL triggerChanged = self.hasAppliedSettings && ![triggerSignature isEqualToString:self.appliedTriggerSignature];
@@ -480,11 +480,12 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 
         BOOL left = corner == ArcLaunchFixedTriggerCornerTopLeft || corner == ArcLaunchFixedTriggerCornerBottomLeft;
         BOOL top = corner == ArcLaunchFixedTriggerCornerTopLeft || corner == ArcLaunchFixedTriggerCornerTopRight;
-        CGFloat diameter = settings.handleTouchRadius * 2.0;
-        CGFloat x = left ? settings.fixedTriggerHorizontalInset : CGRectGetWidth(bounds) - settings.fixedTriggerHorizontalInset - diameter;
-        CGFloat y = top ? settings.fixedTriggerVerticalInset : CGRectGetHeight(bounds) - settings.fixedTriggerVerticalInset - diameter;
-        triggerView.frame = CGRectMake(x, y, diameter, diameter);
-        CGFloat cornerRadius = MIN(settings.fixedTriggerCornerRadius, diameter / 2.0);
+        CGFloat width = settings.fixedTriggerWidth;
+        CGFloat height = settings.fixedTriggerHeight;
+        CGFloat x = left ? settings.fixedTriggerHorizontalInset : CGRectGetWidth(bounds) - settings.fixedTriggerHorizontalInset - width;
+        CGFloat y = top ? settings.fixedTriggerVerticalInset : CGRectGetHeight(bounds) - settings.fixedTriggerVerticalInset - height;
+        triggerView.frame = CGRectMake(x, y, width, height);
+        CGFloat cornerRadius = MIN(settings.fixedTriggerCornerRadius, MIN(width, height) / 2.0);
         triggerView.layer.cornerRadius = cornerRadius;
         triggerView.clipsToBounds = YES;
         UIView *areaView = self.fixedTriggerTouchAreaViews[cornerValue];

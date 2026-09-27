@@ -23,6 +23,9 @@ static const CGFloat ArcLaunchFloatingWindowDwellDurationStep = 0.1;
 const CGFloat ArcLaunchDefaultFloatingWindowDwellDuration = 2.0;
 const CGFloat ArcLaunchMinimumFixedTriggerInset = -30.0;
 const CGFloat ArcLaunchMaximumFixedTriggerInset = 120.0;
+const CGFloat ArcLaunchMinimumFixedTriggerDimension = 8.0;
+const CGFloat ArcLaunchMaximumFixedTriggerDimension = 120.0;
+const CGFloat ArcLaunchDefaultFixedTriggerDimension = 76.0;
 const CGFloat ArcLaunchMinimumFixedTriggerCornerRadius = 0.0;
 const CGFloat ArcLaunchMaximumFixedTriggerCornerRadius = 60.0;
 static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
@@ -103,6 +106,8 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
         _floatingWindowDwellDuration = ArcLaunchDefaultFloatingWindowDwellDuration;
         _handleStyle = ArcLaunchHandleStyleAutomatic;
         _handleTouchRadius = ArcLaunchDefaultHandleTouchRadius;
+        _fixedTriggerWidth = ArcLaunchDefaultFixedTriggerDimension;
+        _fixedTriggerHeight = ArcLaunchDefaultFixedTriggerDimension;
         _backdropStyle = ArcLaunchBackdropStyleAutomatic;
         _backdropBlur = ArcLaunchDefaultBackdropBlur;
         _shortcuts = [NSMutableArray array];
@@ -119,6 +124,8 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
     copy.menuTriggerMode = self.menuTriggerMode;
     copy.fixedTriggerCorners = self.fixedTriggerCorners;
     copy.landscapeTriggerEnabled = self.landscapeTriggerEnabled;
+    copy.fixedTriggerWidth = self.fixedTriggerWidth;
+    copy.fixedTriggerHeight = self.fixedTriggerHeight;
     copy.fixedTriggerHorizontalInset = self.fixedTriggerHorizontalInset;
     copy.fixedTriggerVerticalInset = self.fixedTriggerVerticalInset;
     copy.fixedTriggerCornerRadius = self.fixedTriggerCornerRadius;
@@ -149,6 +156,8 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
     if (self.fixedTriggerCorners == 0) {
         self.fixedTriggerCorners = ArcLaunchFixedTriggerCornerBottomRight;
     }
+    self.fixedTriggerWidth = isfinite(self.fixedTriggerWidth) ? MIN(MAX(self.fixedTriggerWidth, ArcLaunchMinimumFixedTriggerDimension), ArcLaunchMaximumFixedTriggerDimension) : ArcLaunchDefaultFixedTriggerDimension;
+    self.fixedTriggerHeight = isfinite(self.fixedTriggerHeight) ? MIN(MAX(self.fixedTriggerHeight, ArcLaunchMinimumFixedTriggerDimension), ArcLaunchMaximumFixedTriggerDimension) : ArcLaunchDefaultFixedTriggerDimension;
     self.fixedTriggerHorizontalInset = isfinite(self.fixedTriggerHorizontalInset) ? MIN(MAX(self.fixedTriggerHorizontalInset, ArcLaunchMinimumFixedTriggerInset), ArcLaunchMaximumFixedTriggerInset) : 0.0;
     self.fixedTriggerVerticalInset = isfinite(self.fixedTriggerVerticalInset) ? MIN(MAX(self.fixedTriggerVerticalInset, ArcLaunchMinimumFixedTriggerInset), ArcLaunchMaximumFixedTriggerInset) : 0.0;
     self.normalizedVerticalPosition = MIN(MAX(self.normalizedVerticalPosition, 0.0), 1.0);
@@ -158,7 +167,8 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
     self.ringSpacing = isfinite(self.ringSpacing) ? MIN(MAX(self.ringSpacing, ArcLaunchMinimumRingSpacing), ArcLaunchMaximumRingSpacing) : ArcLaunchDefaultRingSpacing;
     self.backdropBlur = isfinite(self.backdropBlur) ? MIN(MAX(self.backdropBlur, ArcLaunchMinimumBackdropBlur), 1.0) : ArcLaunchDefaultBackdropBlur;
     self.handleTouchRadius = isfinite(self.handleTouchRadius) ? MIN(MAX(self.handleTouchRadius, ArcLaunchMinimumHandleTouchRadius), ArcLaunchMaximumHandleTouchRadius) : ArcLaunchDefaultHandleTouchRadius;
-    self.fixedTriggerCornerRadius = isfinite(self.fixedTriggerCornerRadius) ? MIN(MAX(self.fixedTriggerCornerRadius, ArcLaunchMinimumFixedTriggerCornerRadius), ArcLaunchMaximumFixedTriggerCornerRadius) : self.handleTouchRadius;
+    CGFloat maximumCornerRadius = MIN(ArcLaunchMaximumFixedTriggerCornerRadius, MIN(self.fixedTriggerWidth, self.fixedTriggerHeight) / 2.0);
+    self.fixedTriggerCornerRadius = isfinite(self.fixedTriggerCornerRadius) ? MIN(MAX(self.fixedTriggerCornerRadius, ArcLaunchMinimumFixedTriggerCornerRadius), maximumCornerRadius) : MIN(self.handleTouchRadius, maximumCornerRadius);
     if (self.handleStyle < ArcLaunchHandleStyleLight || self.handleStyle > ArcLaunchHandleStyleAutomatic) {
         self.handleStyle = ArcLaunchHandleStyleAutomatic;
     }
@@ -209,6 +219,8 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
         @"menuTriggerMode": @(self.menuTriggerMode),
         @"fixedTriggerCorners": @(self.fixedTriggerCorners),
         @"landscapeTriggerEnabled": @(self.landscapeTriggerEnabled),
+        @"fixedTriggerWidth": @(self.fixedTriggerWidth),
+        @"fixedTriggerHeight": @(self.fixedTriggerHeight),
         @"fixedTriggerHorizontalInset": @(self.fixedTriggerHorizontalInset),
         @"fixedTriggerVerticalInset": @(self.fixedTriggerVerticalInset),
         @"fixedTriggerCornerRadius": @(self.fixedTriggerCornerRadius),
@@ -242,6 +254,8 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
     NSNumber *menuTriggerMode = number(@"menuTriggerMode");
     NSNumber *fixedTriggerCorners = number(@"fixedTriggerCorners");
     NSNumber *landscapeTriggerEnabled = number(@"landscapeTriggerEnabled");
+    NSNumber *fixedTriggerWidth = number(@"fixedTriggerWidth");
+    NSNumber *fixedTriggerHeight = number(@"fixedTriggerHeight");
     NSNumber *fixedTriggerHorizontalInset = number(@"fixedTriggerHorizontalInset");
     NSNumber *fixedTriggerVerticalInset = number(@"fixedTriggerVerticalInset");
     NSNumber *fixedTriggerCornerRadius = number(@"fixedTriggerCornerRadius");
@@ -262,6 +276,8 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
     if (menuTriggerMode) settings.menuTriggerMode = menuTriggerMode.integerValue;
     if (fixedTriggerCorners) settings.fixedTriggerCorners = fixedTriggerCorners.unsignedIntegerValue;
     if (landscapeTriggerEnabled) settings.landscapeTriggerEnabled = landscapeTriggerEnabled.boolValue;
+    if (fixedTriggerWidth) settings.fixedTriggerWidth = fixedTriggerWidth.doubleValue;
+    if (fixedTriggerHeight) settings.fixedTriggerHeight = fixedTriggerHeight.doubleValue;
     if (fixedTriggerHorizontalInset) settings.fixedTriggerHorizontalInset = fixedTriggerHorizontalInset.doubleValue;
     if (fixedTriggerVerticalInset) settings.fixedTriggerVerticalInset = fixedTriggerVerticalInset.doubleValue;
     if (edge) settings.edge = edge.integerValue;
