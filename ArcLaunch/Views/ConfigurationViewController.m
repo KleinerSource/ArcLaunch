@@ -554,7 +554,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
 - (UITableViewCell *)floatingHostCell {
     UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"FloatingHostCell"] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"FloatingHostCell"];
     cell.textLabel.text = @"悬浮分屏";
-    cell.detailTextLabel.text = self.hudSceneCoordinator.floatingHostStatusDescription;
+    cell.detailTextLabel.text = self.hudSceneCoordinator.floatingHostDescription;
     cell.detailTextLabel.numberOfLines = 0;
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
     return cell;
@@ -672,8 +672,21 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     if (indexPath.section == ArcLaunchConfigurationSectionTrigger && self.settingsStore.settings.menuTriggerMode == ArcLaunchMenuTriggerModeFixedCorners && [self triggerControlRowForTableRow:indexPath.row] == ArcLaunchTriggerRowFineTuning) {
-        self.triggerFineTuningExpanded = !self.triggerFineTuningExpanded;
-        [tableView reloadSections:[NSIndexSet indexSetWithIndex:ArcLaunchConfigurationSectionTrigger] withRowAnimation:UITableViewRowAnimationAutomatic];
+        BOOL expanding = !self.triggerFineTuningExpanded;
+        NSMutableArray<NSIndexPath *> *indexPaths = [NSMutableArray arrayWithCapacity:ArcLaunchTriggerFineTuningRowCount];
+        for (NSInteger row = 3; row < 3 + ArcLaunchTriggerFineTuningRowCount; row++) {
+            [indexPaths addObject:[NSIndexPath indexPathForRow:row inSection:ArcLaunchConfigurationSectionTrigger]];
+        }
+        [tableView beginUpdates];
+        self.triggerFineTuningExpanded = expanding;
+        if (expanding) {
+            [tableView insertRowsAtIndexPaths:indexPaths withRowAnimation:UITableViewRowAnimationFade];
+        } else {
+            [tableView deleteRowsAtIndexPaths:indexPaths withRowAnimation:UITableViewRowAnimationFade];
+        }
+        [tableView endUpdates];
+        UITableViewCell *fineTuningCell = [tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:2 inSection:ArcLaunchConfigurationSectionTrigger]];
+        fineTuningCell.detailTextLabel.text = expanding ? @"收起" : @"展开";
     } else if (indexPath.section == ArcLaunchConfigurationSectionShortcuts && indexPath.row == ArcLaunchShortcutActionRowAdd) {
         [self showApplicationPicker];
     } else if (indexPath.section == ArcLaunchConfigurationSectionShortcuts && indexPath.row == ArcLaunchShortcutActionRowArrange) {
