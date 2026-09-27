@@ -362,6 +362,13 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
     }
 }
 
+- (void)minimizeExpandedWindows {
+    if (self.windowsHidden) {
+        return;
+    }
+    [self minimizeExpandedEntriesExcept:nil];
+}
+
 - (void)restoreEntry:(ArcLaunchFloatingWindowEntry *)entry {
     if (![self isEntryMinimized:entry]) {
         return;

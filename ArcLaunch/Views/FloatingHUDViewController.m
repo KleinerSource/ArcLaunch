@@ -4,6 +4,7 @@
 #import "ArcLaunchFanLayout.h"
 #import "ArcLaunchLayerHitTesting.h"
 #import "ArcLaunchSettingsStore.h"
+#import "HUDTouchEventBridge.h"
 #import "SystemApplicationBridge.h"
 #import <math.h>
 #import <notify.h>
@@ -153,6 +154,9 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
         self.floatingWindowManager.interactiveViewsDidChangeHandler = ^{
             [weakSelf refreshHitTargets];
         };
+        ArcLaunchSetHUDBackgroundTapHandler(^{
+            [weakSelf.floatingWindowManager minimizeExpandedWindows];
+        });
     }
 
     self.backdropView = [[UIVisualEffectView alloc] initWithEffect:nil];
@@ -253,6 +257,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+    ArcLaunchSetHUDBackgroundTapHandler(nil);
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
     if (_backdropAnimator.state == UIViewAnimatingStateActive) {
         [_backdropAnimator stopAnimation:YES];
