@@ -99,6 +99,14 @@
     XCTAssertEqual(invalid.backdropStyle, ArcLaunchBackdropStyleAutomatic);
 }
 
+- (void)testFloatingWindowDwellDurationClampsAndRoundsToTenths {
+    XCTAssertEqualWithAccuracy([ArcLaunchSettings settingsFromDictionary:@{}].floatingWindowDwellDuration, ArcLaunchDefaultFloatingWindowDwellDuration, 0.001);
+    XCTAssertEqualWithAccuracy([ArcLaunchSettings settingsFromDictionary:@{@"floatingWindowDwellDuration": @0.26}].floatingWindowDwellDuration, 0.3, 0.001);
+    XCTAssertEqualWithAccuracy([ArcLaunchSettings settingsFromDictionary:@{@"floatingWindowDwellDuration": @0.01}].floatingWindowDwellDuration, 0.1, 0.001);
+    // 旧版本允许最长 5 秒，读取后收紧到新的上限。
+    XCTAssertEqualWithAccuracy([ArcLaunchSettings settingsFromDictionary:@{@"floatingWindowDwellDuration": @5}].floatingWindowDwellDuration, 3.0, 0.001);
+}
+
 - (void)testKeyboardDisplayModePersistsAndDefaultsToInWindow {
     ArcLaunchSettingsStore *store = [[ArcLaunchSettingsStore alloc] initWithUserDefaults:self.defaults key:self.key];
     XCTAssertEqual(store.settings.keyboardDisplayMode, ArcLaunchKeyboardDisplayModeInWindow);

@@ -16,8 +16,10 @@ const CGFloat ArcLaunchDefaultBackdropBlur = 1.0;
 const CGFloat ArcLaunchMinimumHandleTouchRadius = 4.0;
 const CGFloat ArcLaunchMaximumHandleTouchRadius = 60.0;
 const CGFloat ArcLaunchDefaultHandleTouchRadius = 38.0;
-const CGFloat ArcLaunchMinimumFloatingWindowDwellDuration = 1.0;
-const CGFloat ArcLaunchMaximumFloatingWindowDwellDuration = 5.0;
+const CGFloat ArcLaunchMinimumFloatingWindowDwellDuration = 0.1;
+const CGFloat ArcLaunchMaximumFloatingWindowDwellDuration = 3.0;
+// 等待时间以 0.1 秒为刻度。
+static const CGFloat ArcLaunchFloatingWindowDwellDurationStep = 0.1;
 const CGFloat ArcLaunchDefaultFloatingWindowDwellDuration = 2.0;
 const CGFloat ArcLaunchMinimumFixedTriggerInset = -30.0;
 const CGFloat ArcLaunchMaximumFixedTriggerInset = 120.0;
@@ -132,7 +134,7 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
 }
 
 - (void)normalize {
-    self.floatingWindowDwellDuration = isfinite(self.floatingWindowDwellDuration) ? MIN(MAX(round(self.floatingWindowDwellDuration), ArcLaunchMinimumFloatingWindowDwellDuration), ArcLaunchMaximumFloatingWindowDwellDuration) : ArcLaunchDefaultFloatingWindowDwellDuration;
+    self.floatingWindowDwellDuration = isfinite(self.floatingWindowDwellDuration) ? MIN(MAX(round(self.floatingWindowDwellDuration / ArcLaunchFloatingWindowDwellDurationStep) * ArcLaunchFloatingWindowDwellDurationStep, ArcLaunchMinimumFloatingWindowDwellDuration), ArcLaunchMaximumFloatingWindowDwellDuration) : ArcLaunchDefaultFloatingWindowDwellDuration;
     if (self.keyboardDisplayMode != ArcLaunchKeyboardDisplayModeInWindow && self.keyboardDisplayMode != ArcLaunchKeyboardDisplayModeFullScreen) {
         self.keyboardDisplayMode = ArcLaunchKeyboardDisplayModeInWindow;
     }

@@ -7,9 +7,11 @@ static const CGFloat ArcLaunchFloatingButtonSize = 28.0;
 static const CGFloat ArcLaunchFloatingResizeHandleSize = 28.0;
 static const CGFloat ArcLaunchFloatingPlaceholderIconSize = 56.0;
 static const CGFloat ArcLaunchFloatingBadgeIconSize = 22.0;
-// 收纳区缩略图向外甩出超过该距离或速度时收起整个边栏。
-static const CGFloat ArcLaunchFloatingDockCollapseDistance = 44.0;
-static const CGFloat ArcLaunchFloatingDockCollapseVelocity = 600.0;
+// 收纳区缩略图一旦向外侧滑超过该距离就立即收起整个边栏，不必等松手；
+// 距离很小，只用来区分侧滑与轻点时的手指抖动。
+static const CGFloat ArcLaunchFloatingDockCollapseDistance = 6.0;
+// 松手时仍有向外的速度也视为侧滑收起。
+static const CGFloat ArcLaunchFloatingDockCollapseVelocity = 100.0;
 
 @interface FloatingAppWindowView ()
 @property (nonatomic, readwrite) CGSize screenSize;
@@ -394,12 +396,19 @@ static const CGFloat ArcLaunchFloatingDockCollapseVelocity = 600.0;
     CGFloat outward = [recognizer translationInView:self.superview].x * direction;
     switch (recognizer.state) {
         case UIGestureRecognizerStateChanged:
-            // 只允许向收纳区外侧拖动，向内拖动时轻微阻尼。
+            if (outward > ArcLaunchFloatingDockCollapseDistance) {
+                // 向外侧滑即收起；重置识别器结束本次手势，避免后续移动继续平移已在收起的缩略图。
+                [self.delegate floatingAppWindowViewDidRequestHideDock:self];
+                recognizer.enabled = NO;
+                recognizer.enabled = YES;
+                break;
+            }
+            // 向内拖动时轻微阻尼，松手后弹回。
             self.transform = CGAffineTransformMakeTranslation((outward > 0.0 ? outward : outward * 0.2) * direction, 0.0);
             break;
         case UIGestureRecognizerStateEnded: {
             CGFloat velocity = [recognizer velocityInView:self.superview].x * direction;
-            if (outward > ArcLaunchFloatingDockCollapseDistance || velocity > ArcLaunchFloatingDockCollapseVelocity) {
+            if (outward > 0.0 || velocity > ArcLaunchFloatingDockCollapseVelocity) {
                 [self.delegate floatingAppWindowViewDidRequestHideDock:self];
                 break;
             }

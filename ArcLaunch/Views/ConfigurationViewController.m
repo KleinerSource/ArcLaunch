@@ -491,20 +491,19 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
 
 - (UITableViewCell *)floatingWindowDwellDurationCell {
     UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"FloatingWindowDwellDurationCell"] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"FloatingWindowDwellDurationCell"];
-    UIStepper *stepper = [cell.accessoryView isKindOfClass:UIStepper.class] ? (UIStepper *)cell.accessoryView : nil;
-    if (!stepper) {
-        stepper = [UIStepper new];
-        stepper.minimumValue = ArcLaunchMinimumFloatingWindowDwellDuration;
-        stepper.maximumValue = ArcLaunchMaximumFloatingWindowDwellDuration;
-        stepper.stepValue = 1.0;
-        stepper.accessibilityLabel = @"悬浮窗等待时间";
-        [stepper addTarget:self action:@selector(floatingWindowDwellDurationChanged:) forControlEvents:UIControlEventValueChanged];
-        cell.accessoryView = stepper;
+    UISlider *slider = [cell.accessoryView isKindOfClass:UISlider.class] ? (UISlider *)cell.accessoryView : nil;
+    if (!slider) {
+        slider = [[UISlider alloc] initWithFrame:CGRectMake(0.0, 0.0, 150.0, 32.0)];
+        slider.minimumValue = ArcLaunchMinimumFloatingWindowDwellDuration;
+        slider.maximumValue = ArcLaunchMaximumFloatingWindowDwellDuration;
+        slider.accessibilityLabel = @"悬浮窗等待时间";
+        [slider addTarget:self action:@selector(floatingWindowDwellDurationChanged:) forControlEvents:UIControlEventValueChanged];
+        cell.accessoryView = slider;
     }
     CGFloat duration = self.settingsStore.settings.floatingWindowDwellDuration;
-    stepper.value = duration;
+    slider.value = duration;
     cell.textLabel.text = @"悬浮窗等待时间";
-    cell.detailTextLabel.text = [NSString stringWithFormat:@"%.0f 秒", duration];
+    cell.detailTextLabel.text = [self dwellDurationText:duration];
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
     return cell;
 }
@@ -641,10 +640,25 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
     }];
 }
 
-- (void)floatingWindowDwellDurationChanged:(UIStepper *)sender {
+- (NSString *)dwellDurationText:(CGFloat)duration {
+    return duration < 1.0 ? [NSString stringWithFormat:@"%.0f 毫秒", duration * 1000.0] : [NSString stringWithFormat:@"%.1f 秒", duration];
+}
+
+// 与其它滑块一样只在跨过 0.1 秒刻度时写入，拖动中不重载表格。
+- (void)floatingWindowDwellDurationChanged:(UISlider *)sender {
+    CGFloat value = round(sender.value * 10.0) / 10.0;
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:ArcLaunchFloatingSplitRowDwellDuration inSection:ArcLaunchConfigurationSectionFloatingSplit];
+    UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
+    cell.detailTextLabel.text = [self dwellDurationText:value];
+
+    if (fabs(self.settingsStore.settings.floatingWindowDwellDuration - value) < 0.001) {
+        return;
+    }
+    self.adjustingSlider = sender.isTracking;
     [self.settingsStore mutateSettings:^(ArcLaunchSettings *settings) {
-        settings.floatingWindowDwellDuration = sender.value;
+        settings.floatingWindowDwellDuration = value;
     }];
+    self.adjustingSlider = NO;
 }
 
 - (void)keyboardDisplayModeChanged:(UISegmentedControl *)sender {

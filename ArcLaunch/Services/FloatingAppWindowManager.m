@@ -204,7 +204,8 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
     windowView.overrideUserInterfaceStyle = self.userInterfaceStyle;
     NSUInteger expandedCount = self.entries.count - self.minimizedEntries.count;
     windowView.frame = [ArcLaunchFloatingWindowLayout defaultFrameForIndex:expandedCount scale:ArcLaunchFloatingWindowDefaultScale screenSize:screenSize bounds:[self bounds] safeAreaInsets:[self safeAreaInsets]];
-    [self.containerView insertSubview:windowView belowSubview:self.dockPlateView];
+    // 展开的窗口始终位于收纳区之上。
+    [self.containerView addSubview:windowView];
 
     ArcLaunchFloatingWindowEntry *entry = [ArcLaunchFloatingWindowEntry new];
     entry.bundleIdentifier = shortcut.bundleIdentifier;
@@ -342,10 +343,7 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
     entry.restoredFrame = [self clampedFrame:frame];
     [self.minimizedEntries addObject:entry];
     entry.windowView.minimizedEdge = self.dockEdge;
-    [self.containerView bringSubviewToFront:entry.windowView];
-    if (self.dockCollapsed) {
-        [self.containerView bringSubviewToFront:self.dockHandleView];
-    }
+    [self restackDockBelowWindows];
     [self updateDockPlateVisibility];
     [UIView animateWithDuration:0.4 delay:0.0 usingSpringWithDamping:0.85 initialSpringVelocity:0.0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
         entry.windowView.minimized = YES;
@@ -387,7 +385,7 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
         self.dockCollapsed = NO;
         self.dockHandleView.hidden = YES;
     }
-    [self.containerView insertSubview:entry.windowView belowSubview:self.dockPlateView];
+    [self.containerView bringSubviewToFront:entry.windowView];
     CGRect frame = [self clampedFrame:entry.restoredFrame];
     [UIView animateWithDuration:0.4 delay:0.0 usingSpringWithDamping:0.85 initialSpringVelocity:0.0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
         entry.windowView.minimized = NO;
@@ -398,6 +396,16 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
         [self updateDockPlateVisibility];
     }];
     [self notifyInteractiveViewsDidChange];
+}
+
+// 收纳区整体压在展开的悬浮窗之下，不遮挡窗口；层级自下而上为：
+// 底板、缩略图（按收起顺序）、边栏把手，其上才是展开的窗口。
+- (void)restackDockBelowWindows {
+    [self.containerView sendSubviewToBack:self.dockHandleView];
+    for (ArcLaunchFloatingWindowEntry *entry in self.minimizedEntries.reverseObjectEnumerator) {
+        [self.containerView sendSubviewToBack:entry.windowView];
+    }
+    [self.containerView sendSubviewToBack:self.dockPlateView];
 }
 
 // 在动画块中调用：把收纳区中的缩略图依次排好，底板随之伸缩。
@@ -448,7 +456,7 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
     self.dockCollapsed = YES;
     self.dockHandleView.hidden = NO;
     [self layoutDockHandle];
-    [self.containerView bringSubviewToFront:self.dockHandleView];
+    [self restackDockBelowWindows];
     [self notifyInteractiveViewsDidChange];
     [UIView animateWithDuration:0.28 delay:0.0 usingSpringWithDamping:0.9 initialSpringVelocity:0.0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
         for (ArcLaunchFloatingWindowEntry *entry in self.minimizedEntries) {
@@ -495,7 +503,7 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
         return;
     }
     [self minimizeExpandedEntriesExcept:entry];
-    [self.containerView insertSubview:entry.windowView belowSubview:self.dockPlateView];
+    [self.containerView bringSubviewToFront:entry.windowView];
 }
 
 - (void)setWindowsHidden:(BOOL)hidden {
@@ -532,11 +540,10 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
     if (self.keyboardDisplayMode != ArcLaunchKeyboardDisplayModeFullScreen || [self isEntryMinimized:entry] || entry.windowView.keyboardFullScreen) {
         return;
     }
+    // 置顶后位于收纳区之上，底板不会盖住应用画面。
     [self bringEntryToFront:entry];
     entry.frameBeforeKeyboard = entry.windowView.frame;
     // 窗口内容按窗口宽度等比缩放；去掉标题条后与屏幕等大，应用与键盘都按原尺寸显示。
-    // 放到收纳区之上，避免底板盖住应用画面。
-    [self.containerView bringSubviewToFront:entry.windowView];
     // 应用始终按竖屏布局：竖屏时正好铺满屏幕；横屏时按竖屏比例放到最大并居中，避免画面被放大裁切。
     CGRect bounds = [self bounds];
     CGSize screenSize = entry.windowView.screenSize;
@@ -554,7 +561,6 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
     if (!entry.windowView.keyboardFullScreen || [self isEntryMinimized:entry]) {
         return;
     }
-    [self.containerView insertSubview:entry.windowView belowSubview:self.dockPlateView];
     CGRect frame = [self clampedFrame:entry.frameBeforeKeyboard];
     [UIView animateWithDuration:0.3 delay:0.0 usingSpringWithDamping:0.9 initialSpringVelocity:0.0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
         entry.windowView.keyboardFullScreen = NO;
