@@ -16,6 +16,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy, readonly) NSArray<UIView *> *interactiveViews;
 @property (nonatomic) UIUserInterfaceStyle userInterfaceStyle;
 @property (nonatomic) ArcLaunchHandleStyle handleStyle;
+/// 悬浮应用弹出软键盘时的显示方式；切回小窗内模式会立即恢复正在全屏显示键盘的窗口。
+@property (nonatomic) ArcLaunchKeyboardDisplayMode keyboardDisplayMode;
 
 - (instancetype)initWithContainerView:(UIView *)containerView parentViewController:(UIViewController *)parentViewController applicationBridge:(SystemApplicationBridge *)applicationBridge;
 - (instancetype)init NS_UNAVAILABLE;
@@ -23,8 +25,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)openShortcut:(ArcLaunchShortcut *)shortcut icon:(nullable UIImage *)icon fromPoint:(CGPoint)point;
 /// 锁屏时隐藏全部窗口，场景保持运行。
 - (void)setWindowsHidden:(BOOL)hidden;
-/// 将当前展开的窗口收进边栏。
-- (void)minimizeExpandedWindows;
 - (void)closeAllWindows;
 
 @end

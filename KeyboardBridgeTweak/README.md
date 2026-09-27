@@ -4,6 +4,8 @@
 
 GitHub Actions 只产出 `arm64` 和 `arm64e` 两个 `.deb`。两个包的 Debian 架构都标为 `iphoneos-arm64`，文件名对应包内 dylib 的实际切片，方便 rootful、rootless 和 RootHide 的包管理器安装 arm64e 变体。安装脚本会选择注入目录：rootless 使用 `/var/jb/Library/MobileSubstrate/DynamicLibraries`，rootful 和 RootHide 使用 `/Library/MobileSubstrate/DynamicLibraries`。
 
+插件同时会在 guest 应用弹出、收起软键盘时发送 Darwin 通知 `com.kleinersource.arclaunch.keyboardbridge.<bundle>.keyboard.shown` / `.keyboard.hidden`。ArcLaunch 的“键盘显示”设置为“全屏”时，HUD 收到通知后会让该悬浮窗临时铺满屏幕，键盘收起后恢复小窗；设置为“小窗内”时键盘随应用画面缩放显示在小窗中。iOS 17.4 及以上使用 UIKit 场景托管时，宿主会在状态中置位 NativeHosting 标志，插件只上报键盘显隐，不再强制窗口化键盘。
+
 ## 安装
 
 1. 在 GitHub Actions 中只按设备架构下载 `ArcLaunchKeyboardBridge-arm64` 或 `ArcLaunchKeyboardBridge-arm64e` artifact；越狱类型由安装脚本处理。用 Relaxin 的包管理器安装。

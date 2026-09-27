@@ -16,6 +16,8 @@ typedef void (^ArcLaunchFloatingSceneCompletion)(BOOL success, NSString * _Nulla
 @property (nonatomic) UIUserInterfaceStyle userInterfaceStyle;
 /// 被托管的应用进程退出时在主线程回调。
 @property (nonatomic, copy, nullable) dispatch_block_t processExitHandler;
+/// 被托管应用的软键盘弹出或收起时在主线程回调；需安装键盘桥接插件。
+@property (nonatomic, copy, nullable) void (^keyboardVisibilityHandler)(BOOL visible);
 
 - (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier parentViewController:(UIViewController *)parentViewController;
 - (instancetype)init NS_UNAVAILABLE;

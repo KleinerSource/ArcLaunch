@@ -20,6 +20,8 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
 @property (nonatomic, strong, nullable) FloatingAppSceneHost *host;
 /// 收起前的窗口位置，恢复时回到这里。
 @property (nonatomic) CGRect restoredFrame;
+/// 为显示全屏键盘临时铺满屏幕前的窗口位置，键盘收起后回到这里。
+@property (nonatomic) CGRect frameBeforeKeyboard;
 @end
 
 @implementation ArcLaunchFloatingWindowEntry
@@ -32,6 +34,7 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
 @property (nonatomic, strong) NSMutableArray<ArcLaunchFloatingWindowEntry *> *entries;
 /// 收纳区中的窗口，按收起的先后顺序从上往下排列。
 @property (nonatomic, strong) NSMutableArray<ArcLaunchFloatingWindowEntry *> *minimizedEntries;
+@property (nonatomic, strong) UIView *backgroundTapView;
 @property (nonatomic, strong) UIVisualEffectView *dockPlateView;
 @property (nonatomic, strong) UIView *dockHandleView;
 @property (nonatomic, strong) UIView *dockHandlePillView;
@@ -41,6 +44,7 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
 @property (nonatomic) BOOL dockCollapsed;
 @property (nonatomic) CGFloat dockHandleCenterY;
 - (void)minimizeExpandedEntriesExcept:(nullable ArcLaunchFloatingWindowEntry *)focusedEntry;
+- (void)backgroundTapped;
 - (void)collapseDock;
 - (void)expandDock;
 - (void)layoutDockHandle;
@@ -60,6 +64,15 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
         _dockEdge = ArcLaunchEdgeRight;
         _userInterfaceStyle = UIUserInterfaceStyleLight;
         _handleStyle = ArcLaunchHandleStyleAutomatic;
+
+        _backgroundTapView = [[UIView alloc] initWithFrame:containerView.bounds];
+        _backgroundTapView.backgroundColor = UIColor.clearColor;
+        _backgroundTapView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        ArcLaunchSetLayerHitTestsAsOpaque(_backgroundTapView.layer, YES);
+        UITapGestureRecognizer *backgroundTapRecognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(backgroundTapped)];
+        backgroundTapRecognizer.cancelsTouchesInView = YES;
+        [_backgroundTapView addGestureRecognizer:backgroundTapRecognizer];
+        [containerView addSubview:_backgroundTapView];
 
         // 收纳区底板只包住缩略图，不占满整条屏幕边缘；缩略图之间的缝隙也不能漏触摸到下层应用。
         _dockPlateView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
@@ -132,11 +145,17 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
         return @[];
     }
     NSMutableArray<UIView *> *views = [NSMutableArray arrayWithCapacity:self.entries.count + 1];
+    BOOL hasExpandedEntry = NO;
     for (ArcLaunchFloatingWindowEntry *entry in self.entries) {
-        if (self.dockCollapsed && [self isEntryMinimized:entry]) {
+        BOOL minimized = [self isEntryMinimized:entry];
+        if (self.dockCollapsed && minimized) {
             continue;
         }
         [views addObject:entry.windowView];
+        hasExpandedEntry = hasExpandedEntry || !minimized;
+    }
+    if (hasExpandedEntry) {
+        [views addObject:self.backgroundTapView];
     }
     if (self.minimizedEntries.count > 0) {
         [views addObject:self.dockCollapsed ? self.dockHandleView : self.dockPlateView];
@@ -232,6 +251,9 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
     __weak ArcLaunchFloatingWindowEntry *weakEntry = entry;
     host.processExitHandler = ^{
         [weakSelf handleProcessExitForEntry:weakEntry];
+    };
+    host.keyboardVisibilityHandler = ^(BOOL visible) {
+        [weakSelf handleKeyboardVisible:visible forEntry:weakEntry];
     };
     entry.host = host;
     [host startWithCompletion:^(BOOL success, NSString * _Nullable failureReason) {
@@ -331,7 +353,10 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
     if (self.minimizedEntries.count == 0) {
         self.dockEdge = edge;
     }
-    entry.restoredFrame = [self clampedFrame:entry.windowView.frame];
+    // 键盘全屏期间被收起时，恢复后应回到铺满屏幕之前的小窗位置。
+    CGRect frame = entry.windowView.keyboardFullScreen ? entry.frameBeforeKeyboard : entry.windowView.frame;
+    entry.windowView.keyboardFullScreen = NO;
+    entry.restoredFrame = [self clampedFrame:frame];
     [self.minimizedEntries addObject:entry];
     entry.windowView.minimizedEdge = self.dockEdge;
     [self.containerView bringSubviewToFront:entry.windowView];
@@ -362,10 +387,7 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
     }
 }
 
-- (void)minimizeExpandedWindows {
-    if (self.windowsHidden) {
-        return;
-    }
+- (void)backgroundTapped {
     [self minimizeExpandedEntriesExcept:nil];
 }
 
@@ -497,6 +519,57 @@ static const NSTimeInterval ArcLaunchFloatingExitNoticeDuration = 1.2;
     _windowsHidden = hidden;
     self.containerView.hidden = hidden;
     [self notifyInteractiveViewsDidChange];
+}
+
+#pragma mark - 键盘
+
+- (void)setKeyboardDisplayMode:(ArcLaunchKeyboardDisplayMode)keyboardDisplayMode {
+    if (_keyboardDisplayMode == keyboardDisplayMode) {
+        return;
+    }
+    _keyboardDisplayMode = keyboardDisplayMode;
+    if (keyboardDisplayMode == ArcLaunchKeyboardDisplayModeInWindow) {
+        for (ArcLaunchFloatingWindowEntry *entry in self.entries) {
+            [self exitKeyboardFullScreenForEntry:entry];
+        }
+    }
+}
+
+- (void)handleKeyboardVisible:(BOOL)visible forEntry:(nullable ArcLaunchFloatingWindowEntry *)entry {
+    if (!entry || [self.entries indexOfObjectIdenticalTo:entry] == NSNotFound) {
+        return;
+    }
+    if (!visible) {
+        [self exitKeyboardFullScreenForEntry:entry];
+        return;
+    }
+    if (self.keyboardDisplayMode != ArcLaunchKeyboardDisplayModeFullScreen || [self isEntryMinimized:entry] || entry.windowView.keyboardFullScreen) {
+        return;
+    }
+    [self bringEntryToFront:entry];
+    entry.frameBeforeKeyboard = entry.windowView.frame;
+    // 窗口内容按窗口宽度等比缩放；去掉标题条后与屏幕等大，应用与键盘都按原尺寸显示。
+    // 放到收纳区之上，避免底板盖住应用画面。
+    [self.containerView bringSubviewToFront:entry.windowView];
+    CGRect frame = [self bounds];
+    [UIView animateWithDuration:0.3 delay:0.0 usingSpringWithDamping:0.9 initialSpringVelocity:0.0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
+        entry.windowView.keyboardFullScreen = YES;
+        entry.windowView.frame = frame;
+        [entry.windowView layoutIfNeeded];
+    } completion:nil];
+}
+
+- (void)exitKeyboardFullScreenForEntry:(ArcLaunchFloatingWindowEntry *)entry {
+    if (!entry.windowView.keyboardFullScreen || [self isEntryMinimized:entry]) {
+        return;
+    }
+    [self.containerView insertSubview:entry.windowView belowSubview:self.dockPlateView];
+    CGRect frame = [self clampedFrame:entry.frameBeforeKeyboard];
+    [UIView animateWithDuration:0.3 delay:0.0 usingSpringWithDamping:0.9 initialSpringVelocity:0.0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
+        entry.windowView.keyboardFullScreen = NO;
+        entry.windowView.frame = frame;
+        [entry.windowView layoutIfNeeded];
+    } completion:nil];
 }
 
 - (void)setUserInterfaceStyle:(UIUserInterfaceStyle)userInterfaceStyle {

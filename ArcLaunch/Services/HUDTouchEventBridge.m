@@ -94,56 +94,6 @@ static ArcLaunchCreateDigitizerEventFunction ArcLaunchCreateDigitizerEvent;
 static ArcLaunchCreateFingerEventFunction ArcLaunchCreateFingerEvent;
 static ArcLaunchAppendHIDEventFunction ArcLaunchAppendHIDEvent;
 static ArcLaunchSetHIDIntegerFunction ArcLaunchSetHIDInteger;
-static dispatch_block_t ArcLaunchHUDBackgroundTapHandler;
-static NSMutableDictionary<NSNumber *, NSValue *> *ArcLaunchBackgroundTouchStartLocations;
-
-void ArcLaunchSetHUDBackgroundTapHandler(dispatch_block_t handler) {
-    ArcLaunchHUDBackgroundTapHandler = [handler copy];
-}
-
-static void ArcLaunchObserveBackgroundTouch(NSInteger identifier, CGPoint location, UITouchPhase phase, BOOL outsideHUD) {
-    NSNumber *touchKey = @(identifier);
-    NSValue *startValue = ArcLaunchBackgroundTouchStartLocations[touchKey];
-    switch (phase) {
-        case UITouchPhaseBegan:
-            if (outsideHUD) {
-                ArcLaunchBackgroundTouchStartLocations[touchKey] = [NSValue valueWithCGPoint:location];
-            } else {
-                [ArcLaunchBackgroundTouchStartLocations removeObjectForKey:touchKey];
-            }
-            break;
-        case UITouchPhaseMoved:
-        case UITouchPhaseStationary:
-            if (startValue) {
-                CGPoint start = startValue.CGPointValue;
-                CGFloat dx = location.x - start.x;
-                CGFloat dy = location.y - start.y;
-                if (dx * dx + dy * dy > 144.0) {
-                    [ArcLaunchBackgroundTouchStartLocations removeObjectForKey:touchKey];
-                }
-            }
-            break;
-        case UITouchPhaseEnded:
-            [ArcLaunchBackgroundTouchStartLocations removeObjectForKey:touchKey];
-            if (startValue && outsideHUD) {
-                CGPoint start = startValue.CGPointValue;
-                CGFloat dx = location.x - start.x;
-                CGFloat dy = location.y - start.y;
-                if (dx * dx + dy * dy <= 144.0 && ArcLaunchHUDBackgroundTapHandler) {
-                    ArcLaunchHUDBackgroundTapHandler();
-                }
-            }
-            break;
-        case UITouchPhaseCancelled:
-        case UITouchPhaseRegionEntered:
-        case UITouchPhaseRegionMoved:
-        case UITouchPhaseRegionExited:
-            [ArcLaunchBackgroundTouchStartLocations removeObjectForKey:touchKey];
-            break;
-        default:
-            break;
-    }
-}
 
 static void ArcLaunchLoadHIDEventFunctions(void) {
     static dispatch_once_t onceToken;
@@ -349,7 +299,6 @@ static void ArcLaunchHandleHIDEvent(void *target, void *refcon, ArcLaunchIOHIDSe
                 return;
             }
             UIView *view = [window hitTest:location withEvent:nil];
-            ArcLaunchObserveBackgroundTouch(identifier, location, phase, view == nil);
             ArcLaunchReceiveTouch(identifier, location, phase, window, view);
         });
     }
@@ -370,7 +319,6 @@ BOOL ArcLaunchRegisterHUDEventCallback(void) {
     ArcLaunchTouchesToRemove = [NSMutableArray array];
     ArcLaunchTouchesToStationarify = [NSMutableArray array];
     ArcLaunchSafeTouches = @[];
-    ArcLaunchBackgroundTouchStartLocations = [NSMutableDictionary dictionary];
     CFRunLoopSourceContext context = {0};
     context.perform = ArcLaunchTouchEventSourceCallback;
     ArcLaunchTouchEventSource = CFRunLoopSourceCreate(kCFAllocatorDefault, -2, &context);

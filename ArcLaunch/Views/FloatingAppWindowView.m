@@ -202,7 +202,7 @@ static const CGFloat ArcLaunchFloatingDockCollapseVelocity = 600.0;
     self.clipView.frame = bounds;
     self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:bounds cornerRadius:self.clipView.layer.cornerRadius].CGPath;
 
-    CGFloat titleBarHeight = self.minimized ? 0.0 : ArcLaunchFloatingWindowTitleBarHeight;
+    CGFloat titleBarHeight = self.minimized || self.keyboardFullScreen ? 0.0 : ArcLaunchFloatingWindowTitleBarHeight;
     self.titleBarView.frame = CGRectMake(0.0, 0.0, width, ArcLaunchFloatingWindowTitleBarHeight);
     self.contentView.frame = CGRectMake(0.0, titleBarHeight, width, MAX(height - titleBarHeight, 0.0));
     CGFloat contentScale = self.screenSize.width > 0.0 ? width / self.screenSize.width : 1.0;
@@ -261,6 +261,20 @@ static const CGFloat ArcLaunchFloatingDockCollapseVelocity = 600.0;
     // 遮罩按不透明命中，只调透明度仍会在系统层面拦截触摸，展开时必须隐藏。
     self.minimizedOverlayView.hidden = !minimized;
     self.transform = CGAffineTransformIdentity;
+    [self setNeedsLayout];
+}
+
+- (void)setKeyboardFullScreen:(BOOL)keyboardFullScreen {
+    if (_keyboardFullScreen == keyboardFullScreen) {
+        return;
+    }
+    _keyboardFullScreen = keyboardFullScreen;
+    self.clipView.layer.cornerRadius = keyboardFullScreen ? 0.0 : ArcLaunchFloatingWindowCornerRadius;
+    self.clipView.layer.borderWidth = keyboardFullScreen ? 0.0 : 0.5;
+    self.layer.shadowOpacity = keyboardFullScreen ? 0.0 : 0.28;
+    // 标题条和缩放手柄按不透明命中，全屏时缩放手柄正好压在键盘右下角，必须真正隐藏才不会挡住按键。
+    self.titleBarView.hidden = keyboardFullScreen;
+    self.resizeHandleView.hidden = keyboardFullScreen;
     [self setNeedsLayout];
 }
 

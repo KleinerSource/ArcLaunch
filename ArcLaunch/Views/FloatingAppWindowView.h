@@ -26,6 +26,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, getter=isMinimized) BOOL minimized;
 /// 收起时所在的收纳区一侧，决定缩略图向哪个方向甩出可隐藏整个边栏。
 @property (nonatomic) ArcLaunchEdge minimizedEdge;
+/// 软键盘全屏显示期间为 YES：隐藏标题条与缩放手柄、去掉圆角，内容区占满整个窗口。
+@property (nonatomic, getter=isKeyboardFullScreen) BOOL keyboardFullScreen;
 
 - (instancetype)initWithDisplayName:(NSString *)displayName icon:(nullable UIImage *)icon screenSize:(CGSize)screenSize;
 - (instancetype)initWithFrame:(CGRect)frame NS_UNAVAILABLE;

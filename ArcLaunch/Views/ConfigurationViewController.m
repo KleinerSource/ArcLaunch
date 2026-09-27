@@ -53,7 +53,8 @@ typedef NS_ENUM(NSInteger, ArcLaunchLayoutRow) {
 typedef NS_ENUM(NSInteger, ArcLaunchFloatingSplitRow) {
     ArcLaunchFloatingSplitRowEnabled = 0,
     ArcLaunchFloatingSplitRowDwellDuration = 1,
-    ArcLaunchFloatingSplitRowCount = 2,
+    ArcLaunchFloatingSplitRowKeyboardDisplayMode = 2,
+    ArcLaunchFloatingSplitRowCount = 3,
 };
 
 // 快捷应用分组开头的两个操作行，其后才是各个应用。
@@ -167,7 +168,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
         case ArcLaunchConfigurationSectionLayout:
             return @"扇形菜单围绕悬浮条逐圈展开，每圈按屏幕可显示的范围和间距放下尽可能多的图标。同圈间距控制一圈内相邻图标的距离，圈间距控制两圈之间的距离。空间不足时会等比缩小图标。";
         case ArcLaunchConfigurationSectionFloatingSplit:
-            return @"选中扇形菜单中的应用并停留达到等待时间后松手，即以悬浮窗打开；未达到时间松手则全屏打开。关闭总开关会关闭已打开的悬浮窗口并退出宿主，以减少内存占用。";
+            return @"选中扇形菜单中的应用并停留达到等待时间后松手，即以悬浮窗打开；未达到时间松手则全屏打开。关闭总开关会关闭已打开的悬浮窗口并退出宿主，以减少内存占用。\n\n键盘显示为“小窗内”时，键盘随应用画面一起缩小显示在悬浮窗中；为“全屏”时，键盘弹出期间悬浮窗临时铺满屏幕，键盘按原尺寸显示，收起键盘后自动恢复小窗。全屏键盘需要安装键盘桥接插件。";
         case ArcLaunchConfigurationSectionShortcuts:
             return @"在“调整顺序”中以扇形预览长按拖动图标即可排序，靠前的应用位于靠近悬浮条的内圈。左滑应用可删除。\n\n使用扇形菜单时，选中应用并等待设定时间，图标右下角出现窗口标识后松手，即以悬浮窗打开；悬浮窗可拖动标题栏移动、拖右下角缩放，也可收进边栏。最多同时悬浮 3 个应用。";
         case ArcLaunchConfigurationSectionSupport:
@@ -207,7 +208,11 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
         case ArcLaunchConfigurationSectionLayout:
             return [self layoutCellForRow:indexPath.row];
         case ArcLaunchConfigurationSectionFloatingSplit:
-            return indexPath.row == ArcLaunchFloatingSplitRowEnabled ? [self floatingSplitCell] : [self floatingWindowDwellDurationCell];
+            switch (indexPath.row) {
+                case ArcLaunchFloatingSplitRowEnabled: return [self floatingSplitCell];
+                case ArcLaunchFloatingSplitRowDwellDuration: return [self floatingWindowDwellDurationCell];
+                default: return [self keyboardDisplayModeCell];
+            }
         case ArcLaunchConfigurationSectionShortcuts:
             return [self shortcutCellForRow:indexPath.row];
         case ArcLaunchConfigurationSectionUpdate:
@@ -504,6 +509,21 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
     return cell;
 }
 
+- (UITableViewCell *)keyboardDisplayModeCell {
+    UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"KeyboardDisplayModeCell"] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"KeyboardDisplayModeCell"];
+    UISegmentedControl *control = [cell.accessoryView isKindOfClass:UISegmentedControl.class] ? (UISegmentedControl *)cell.accessoryView : nil;
+    if (!control) {
+        control = [[UISegmentedControl alloc] initWithItems:@[@"小窗内", @"全屏"]];
+        control.frame = CGRectMake(0.0, 0.0, 150.0, 32.0);
+        [control addTarget:self action:@selector(keyboardDisplayModeChanged:) forControlEvents:UIControlEventValueChanged];
+        cell.accessoryView = control;
+    }
+    control.selectedSegmentIndex = self.settingsStore.settings.keyboardDisplayMode == ArcLaunchKeyboardDisplayModeFullScreen ? 1 : 0;
+    cell.textLabel.text = @"键盘显示";
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    return cell;
+}
+
 - (UITableViewCell *)updateCellForRow:(NSInteger)row {
     if (row == ArcLaunchUpdateRowCheck) {
         UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"CheckUpdateCell"] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:@"CheckUpdateCell"];
@@ -624,6 +644,12 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
 - (void)floatingWindowDwellDurationChanged:(UIStepper *)sender {
     [self.settingsStore mutateSettings:^(ArcLaunchSettings *settings) {
         settings.floatingWindowDwellDuration = sender.value;
+    }];
+}
+
+- (void)keyboardDisplayModeChanged:(UISegmentedControl *)sender {
+    [self.settingsStore mutateSettings:^(ArcLaunchSettings *settings) {
+        settings.keyboardDisplayMode = sender.selectedSegmentIndex == 1 ? ArcLaunchKeyboardDisplayModeFullScreen : ArcLaunchKeyboardDisplayModeInWindow;
     }];
 }
 

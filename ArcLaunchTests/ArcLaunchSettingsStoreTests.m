@@ -99,6 +99,19 @@
     XCTAssertEqual(invalid.backdropStyle, ArcLaunchBackdropStyleAutomatic);
 }
 
+- (void)testKeyboardDisplayModePersistsAndDefaultsToInWindow {
+    ArcLaunchSettingsStore *store = [[ArcLaunchSettingsStore alloc] initWithUserDefaults:self.defaults key:self.key];
+    XCTAssertEqual(store.settings.keyboardDisplayMode, ArcLaunchKeyboardDisplayModeInWindow);
+    [store mutateSettings:^(ArcLaunchSettings *settings) {
+        settings.keyboardDisplayMode = ArcLaunchKeyboardDisplayModeFullScreen;
+    }];
+    ArcLaunchSettingsStore *reloadedStore = [[ArcLaunchSettingsStore alloc] initWithUserDefaults:self.defaults key:self.key];
+    XCTAssertEqual(reloadedStore.settings.keyboardDisplayMode, ArcLaunchKeyboardDisplayModeFullScreen);
+
+    XCTAssertEqual([ArcLaunchSettings settingsFromDictionary:@{}].keyboardDisplayMode, ArcLaunchKeyboardDisplayModeInWindow);
+    XCTAssertEqual([ArcLaunchSettings settingsFromDictionary:@{@"keyboardDisplayMode": @7}].keyboardDisplayMode, ArcLaunchKeyboardDisplayModeInWindow);
+}
+
 - (void)testFloatingWindowFlagPersistsPerShortcut {
     ArcLaunchSettingsStore *store = [[ArcLaunchSettingsStore alloc] initWithUserDefaults:self.defaults key:self.key];
     [store addShortcut:[[ArcLaunchShortcut alloc] initWithBundleIdentifier:@"com.example.first" displayName:@"First"]];

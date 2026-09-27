@@ -110,6 +110,7 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
     copy.enabled = self.enabled;
     copy.floatingSplitEnabled = self.floatingSplitEnabled;
     copy.floatingWindowDwellDuration = self.floatingWindowDwellDuration;
+    copy.keyboardDisplayMode = self.keyboardDisplayMode;
     copy.menuTriggerMode = self.menuTriggerMode;
     copy.fixedTriggerCorners = self.fixedTriggerCorners;
     copy.landscapeTriggerEnabled = self.landscapeTriggerEnabled;
@@ -132,7 +133,10 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
 
 - (void)normalize {
     self.floatingWindowDwellDuration = isfinite(self.floatingWindowDwellDuration) ? MIN(MAX(round(self.floatingWindowDwellDuration), ArcLaunchMinimumFloatingWindowDwellDuration), ArcLaunchMaximumFloatingWindowDwellDuration) : ArcLaunchDefaultFloatingWindowDwellDuration;
-    if (self.menuTriggerMode != ArcLaunchMenuTriggerModeHandle && self.menuTriggerMode != ArcLaunchMenuTriggerModeFixedCorners) {
+    if (self.keyboardDisplayMode != ArcLaunchKeyboardDisplayModeInWindow && self.keyboardDisplayMode != ArcLaunchKeyboardDisplayModeFullScreen) {
+        self.keyboardDisplayMode = ArcLaunchKeyboardDisplayModeInWindow;
+    }
+    if (self.menuTriggerMode != ArcLaunchMenuTriggerModeHandle &&self.menuTriggerMode != ArcLaunchMenuTriggerModeFixedCorners) {
         self.menuTriggerMode = ArcLaunchMenuTriggerModeHandle;
     }
     self.fixedTriggerCorners &= ArcLaunchFixedTriggerCornerAll;
@@ -194,6 +198,7 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
         @"enabled": @(self.enabled),
         @"floatingSplitEnabled": @(self.floatingSplitEnabled),
         @"floatingWindowDwellDuration": @(self.floatingWindowDwellDuration),
+        @"keyboardDisplayMode": @(self.keyboardDisplayMode),
         @"menuTriggerMode": @(self.menuTriggerMode),
         @"fixedTriggerCorners": @(self.fixedTriggerCorners),
         @"landscapeTriggerEnabled": @(self.landscapeTriggerEnabled),
@@ -224,6 +229,8 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
     NSNumber *enabled = number(@"enabled");
     NSNumber *floatingSplitEnabled = number(@"floatingSplitEnabled");
     NSNumber *floatingWindowDwellDuration = number(@"floatingWindowDwellDuration");
+    // 旧设置没有这一项，保持原有的小窗内键盘。
+    NSNumber *keyboardDisplayMode = number(@"keyboardDisplayMode");
     NSNumber *menuTriggerMode = number(@"menuTriggerMode");
     NSNumber *fixedTriggerCorners = number(@"fixedTriggerCorners");
     NSNumber *landscapeTriggerEnabled = number(@"landscapeTriggerEnabled");
@@ -242,6 +249,7 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
     if (enabled) settings.enabled = enabled.boolValue;
     if (floatingSplitEnabled) settings.floatingSplitEnabled = floatingSplitEnabled.boolValue;
     if (floatingWindowDwellDuration) settings.floatingWindowDwellDuration = floatingWindowDwellDuration.doubleValue;
+    if (keyboardDisplayMode) settings.keyboardDisplayMode = keyboardDisplayMode.integerValue;
     if (menuTriggerMode) settings.menuTriggerMode = menuTriggerMode.integerValue;
     if (fixedTriggerCorners) settings.fixedTriggerCorners = fixedTriggerCorners.unsignedIntegerValue;
     if (landscapeTriggerEnabled) settings.landscapeTriggerEnabled = landscapeTriggerEnabled.boolValue;

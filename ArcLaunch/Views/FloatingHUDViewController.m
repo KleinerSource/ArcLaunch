@@ -4,7 +4,6 @@
 #import "ArcLaunchFanLayout.h"
 #import "ArcLaunchLayerHitTesting.h"
 #import "ArcLaunchSettingsStore.h"
-#import "HUDTouchEventBridge.h"
 #import "SystemApplicationBridge.h"
 #import <math.h>
 #import <notify.h>
@@ -148,15 +147,13 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
         self.floatingWindowManager = [[FloatingAppWindowManager alloc] initWithContainerView:self.floatingContainerView parentViewController:self applicationBridge:self.applicationBridge];
         self.floatingWindowManager.userInterfaceStyle = [self systemAppearance] == ArcLaunchResolvedAppearanceDark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
         self.floatingWindowManager.handleStyle = self.settingsStore.settings.handleStyle;
+        self.floatingWindowManager.keyboardDisplayMode = self.settingsStore.settings.keyboardDisplayMode;
         self.floatingWindowManager.feedbackHandler = ^(NSString *message) {
             [weakSelf showFeedback:message];
         };
         self.floatingWindowManager.interactiveViewsDidChangeHandler = ^{
             [weakSelf refreshHitTargets];
         };
-        ArcLaunchSetHUDBackgroundTapHandler(^{
-            [weakSelf.floatingWindowManager minimizeExpandedWindows];
-        });
     }
 
     self.backdropView = [[UIVisualEffectView alloc] initWithEffect:nil];
@@ -257,7 +254,6 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-    ArcLaunchSetHUDBackgroundTapHandler(nil);
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
     if (_backdropAnimator.state == UIViewAnimatingStateActive) {
         [_backdropAnimator stopAnimation:YES];
@@ -303,6 +299,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
     }
     ArcLaunchSettings *settings = self.settingsStore.settings;
     self.floatingWindowManager.handleStyle = settings.handleStyle;
+    self.floatingWindowManager.keyboardDisplayMode = settings.keyboardDisplayMode;
     // 只比较应用集合，不比较顺序：在设置页的排序编辑器里调整顺序时，悬浮条不必再叠加一份预览。
     NSArray<NSString *> *sortedIdentifiers = [[settings.shortcuts valueForKey:@"bundleIdentifier"] sortedArrayUsingSelector:@selector(compare:)];
     NSString *shortcutIdentifiers = [sortedIdentifiers componentsJoinedByString:@","];

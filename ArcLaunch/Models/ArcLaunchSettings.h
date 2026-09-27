@@ -60,6 +60,14 @@ typedef NS_ENUM(NSInteger, ArcLaunchBackdropStyle) {
     ArcLaunchBackdropStyleAutomatic = 3,
 };
 
+/// 悬浮窗中的应用弹出软键盘时的显示方式。
+typedef NS_ENUM(NSInteger, ArcLaunchKeyboardDisplayMode) {
+    /// 键盘随应用画面一起等比缩放，显示在小窗内。
+    ArcLaunchKeyboardDisplayModeInWindow = 0,
+    /// 键盘弹出期间窗口临时铺满屏幕，键盘按原尺寸显示在屏幕底部，收起后恢复小窗。
+    ArcLaunchKeyboardDisplayModeFullScreen = 1,
+};
+
 @interface ArcLaunchShortcut : NSObject <NSCopying>
 
 @property (nonatomic, copy, readonly) NSUUID *identifier;
@@ -81,6 +89,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchBackdropStyle) {
 @property (nonatomic) BOOL floatingSplitEnabled;
 /// 在扇形菜单中悬停选中应用后，达到该时长再松手则以悬浮窗打开。
 @property (nonatomic) CGFloat floatingWindowDwellDuration;
+@property (nonatomic) ArcLaunchKeyboardDisplayMode keyboardDisplayMode;
 @property (nonatomic) ArcLaunchMenuTriggerMode menuTriggerMode;
 @property (nonatomic) ArcLaunchFixedTriggerCorner fixedTriggerCorners;
 @property (nonatomic) BOOL landscapeTriggerEnabled;
