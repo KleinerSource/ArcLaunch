@@ -86,7 +86,7 @@ jobs:
           }
 
           build_package arm64 iphoneos-arm64
-          build_package arm64e iphoneos-arm64e
+          build_package arm64e iphoneos-arm64
 
       - name: Upload arm64 package
         uses: actions/upload-artifact@v7

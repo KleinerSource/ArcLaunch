@@ -2,7 +2,7 @@
 
 这是一个 Theos 插件，针对 ArcLaunch 通过 FrontBoard 悬浮托管的应用启用 UIKit 窗口化软键盘策略。插件只在被托管应用中运行；ArcLaunch HUD 窗口保留系统默认的 key-window 行为，以保证悬浮菜单和触摸事件正常工作。
 
-GitHub Actions 只产出 `arm64` 和 `arm64e` 两个 `.deb`。每个包使用安装脚本在安装时选择注入目录：rootless 使用 `/var/jb/Library/MobileSubstrate/DynamicLibraries`，rootful 和 RootHide 使用 `/Library/MobileSubstrate/DynamicLibraries`。
+GitHub Actions 只产出 `arm64` 和 `arm64e` 两个 `.deb`。两个包的 Debian 架构都标为 `iphoneos-arm64`，文件名对应包内 dylib 的实际切片，方便 rootful、rootless 和 RootHide 的包管理器安装 arm64e 变体。安装脚本会选择注入目录：rootless 使用 `/var/jb/Library/MobileSubstrate/DynamicLibraries`，rootful 和 RootHide 使用 `/Library/MobileSubstrate/DynamicLibraries`。
 
 ## 安装
 
