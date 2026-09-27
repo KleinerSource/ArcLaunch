@@ -102,6 +102,36 @@ jobs:
             echo "::error title=Version mismatch::Built app reports $built_version, expected $VERSION"
             exit 1
           fi
+          assert_info_plist_true() {
+            local key="$1"
+            local value
+            if ! value="$(/usr/libexec/PlistBuddy -c "Print :$key" "$app_path/Info.plist")"; then
+              echo "::error title=Missing Info.plist key::$key was not generated into Info.plist"
+              return 1
+            fi
+            case "$value" in
+              true|1) ;;
+              *)
+                echo "::error title=Invalid Info.plist value::$key must be true, got $value"
+                return 1
+                ;;
+            esac
+          }
+          assert_info_plist_string() {
+            local key="$1"
+            local expected="$2"
+            local value
+            if ! value="$(/usr/libexec/PlistBuddy -c "Print :$key" "$app_path/Info.plist")"; then
+              echo "::error title=Missing Info.plist key::$key was not generated into Info.plist"
+              return 1
+            fi
+            if [[ "$value" != "$expected" ]]; then
+              echo "::error title=Invalid Info.plist value::$key expected $expected, got $value"
+              return 1
+            fi
+          }
+          assert_info_plist_true 'BKSLaunchdPlist:MachServices:com.apple.PreBoard.UIKit.KeyboardManagement.hosted'
+          assert_info_plist_string 'BKSLaunchdPlist:AlternateMachServices:com.apple.UIKit.KeyboardManagement.hosted' 'com.apple.PreBoard.UIKit.KeyboardManagement.hosted'
           executable_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app_path/Info.plist")"
           executable_path="$app_path/$executable_name"
           test -f "$executable_path"
@@ -150,6 +180,7 @@ jobs:
           assert_true_entitlement 'user-preference-write'
           assert_true_entitlement 'com.apple.private.persona-mgmt'
           assert_true_entitlement 'com.apple.private.security.no-sandbox'
+          assert_true_entitlement 'com.apple.private.xpc.launchd.app-server'
           assert_true_entitlement 'com.apple.private.allow-background-haptics'
           assert_true_entitlement 'com.apple.frontboard.launchapplications'
           assert_true_entitlement 'com.apple.runningboard.launchprocess'

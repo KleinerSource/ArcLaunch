@@ -36,6 +36,8 @@
     <true/>
     <key>com.apple.private.security.no-sandbox</key>
     <true/>
+    <key>com.apple.private.xpc.launchd.app-server</key>
+    <true/>
     <key>com.apple.runningboard.assertions.frontboard</key>
     <true/>
     <key>com.apple.runningboard.hereditarygrantoriginator</key>

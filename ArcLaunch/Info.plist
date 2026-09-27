@@ -2,6 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <!-- 注册 UIKit hosted 键盘管理服务，使嵌入的应用场景能够走系统键盘仲裁。 -->
+    <key>BKSLaunchdPlist</key>
+    <dict>
+        <key>AlternateMachServices</key>
+        <dict>
+            <key>com.apple.UIKit.KeyboardManagement.hosted</key>
+            <string>com.apple.PreBoard.UIKit.KeyboardManagement.hosted</string>
+        </dict>
+        <key>MachServices</key>
+        <dict>
+            <key>com.apple.PreBoard.UIKit.KeyboardManagement.hosted</key>
+            <true/>
+        </dict>
+    </dict>
     <!-- HUD 子进程作为悬浮分屏宿主时向被托管应用提供 FrontBoard 工作区服务；主程序不会激活这些服务。 -->
     <key>BSServiceDomains</key>
     <dict>
