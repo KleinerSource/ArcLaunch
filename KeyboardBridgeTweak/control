@@ -1,6 +1,6 @@
 Package: com.kleinersource.arclaunch.keyboardbridge
 Name: ArcLaunch Keyboard Bridge
-Version: 1.0.0
+Version: 1.12.0+37
 Architecture: iphoneos-arm64
 Description: Enables software keyboard windowing for ArcLaunch-hosted applications on iOS 17.0–17.3.
 Maintainer: KleinerSource
