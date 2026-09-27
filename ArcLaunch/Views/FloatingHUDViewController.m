@@ -414,7 +414,7 @@ static void ArcLaunchSetLayerAllowsHitTesting(CALayer *layer, BOOL allowsHitTest
         if (!triggerView) {
             triggerView = [[ArcLaunchFixedTriggerView alloc] initWithFrame:CGRectZero];
             triggerView.tag = corner;
-            triggerView.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.012];
+            triggerView.backgroundColor = UIColor.clearColor;
             triggerView.isAccessibilityElement = YES;
             triggerView.accessibilityLabel = @"ArcLaunch 固定菜单触发区域";
             ArcLaunchSetLayerHitTestsAsOpaque(triggerView.layer, YES);
