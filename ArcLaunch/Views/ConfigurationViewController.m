@@ -709,7 +709,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchUpdateRow) {
         notes = [[notes substringWithRange:range] stringByAppendingString:@"…"];
     }
     NSString *message = [NSString stringWithFormat:@"新版本：%@\n当前版本：%@\n\n%@", release.version.displayString, self.updateChecker.currentVersion.displayString, notes];
-    BOOL betaRelease = [release.tagName isEqualToString:@"dev"];
+    BOOL betaRelease = [release.tagName isEqualToString:@"testing"];
     BOOL downgrade = !betaRelease && [release.version compare:self.updateChecker.currentVersion] != NSOrderedDescending;
     NSString *title = downgrade ? @"切换到标准版" : (betaRelease ? @"发现开发版更新" : @"发现标准版更新");
     NSString *installTitle = downgrade ? @"降级到标准版" : @"立即更新";

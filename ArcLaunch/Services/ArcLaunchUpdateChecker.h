@@ -69,7 +69,7 @@ typedef void (^ArcLaunchUpdateCheckCompletion)(ArcLaunchRelease * _Nullable rele
 @property (nonatomic, strong, readonly, nullable) NSDate *lastCheckDate;
 /// 打开配置页时是否自动检查，默认开启。
 @property (nonatomic, getter=isAutomaticCheckEnabled) BOOL automaticCheckEnabled;
-/// 检查开发版 Release（dev）；关闭时检查标准版 Release（latest）。
+/// 检查开发版 Release（testing）；关闭时检查标准版 Release（latest）。
 @property (nonatomic, getter=isBetaUpdatesEnabled) BOOL betaUpdatesEnabled;
 
 + (instancetype)sharedChecker;

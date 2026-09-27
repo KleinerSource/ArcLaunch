@@ -222,7 +222,7 @@ static NSString *ArcLaunchTrimmedString(id value) {
     if (self) {
         _releaseURL = [releaseURL copy];
         NSURLComponents *betaComponents = [NSURLComponents componentsWithURL:releaseURL resolvingAgainstBaseURL:NO];
-        betaComponents.path = [[betaComponents.path stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"dev"];
+        betaComponents.path = [[betaComponents.path stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"testing"];
         _betaReleaseURL = [betaComponents.URL copy];
         NSString *buildChannel = NSBundle.mainBundle.infoDictionary[@"ArcLaunchUpdateChannel"];
         _currentUpdateChannel = [buildChannel isEqualToString:@"dev"] ? @"dev" : @"latest";
@@ -333,11 +333,12 @@ static NSString *ArcLaunchTrimmedString(id value) {
 }
 
 - (BOOL)isUpdateRelease:(ArcLaunchRelease *)release {
-    NSString *expectedTag = self.betaUpdatesEnabled ? @"dev" : @"latest";
+    NSString *expectedTag = self.betaUpdatesEnabled ? @"testing" : @"latest";
+    NSString *expectedChannel = self.betaUpdatesEnabled ? @"dev" : @"latest";
     if (![release.tagName isEqualToString:expectedTag]) {
         return NO;
     }
-    if (![expectedTag isEqualToString:self.currentUpdateChannel]) {
+    if (![expectedChannel isEqualToString:self.currentUpdateChannel]) {
         return YES;
     }
     return [release.version compare:self.currentVersion] == NSOrderedDescending;

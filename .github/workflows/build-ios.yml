@@ -177,14 +177,14 @@ jobs:
   release:
     name: Publish rolling release
     needs: build
-    # main 发布标准版 latest，dev 发布开发版 dev；其它分支与拉取请求只产出 Actions 工件。
+    # main 发布标准版 latest，dev 分支发布开发版 testing；其它分支与拉取请求只产出 Actions 工件。
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
       # 应用内的更新检测读取这个滚动 Release，改名时要同步修改 ArcLaunchUpdateChecker.m。
-      RELEASE_TAG: ${{ github.ref_name == 'main' && 'latest' || 'dev' }}
+      RELEASE_TAG: ${{ github.ref_name == 'main' && 'latest' || 'testing' }}
       VERSION: ${{ needs.build.outputs.version }}
 
     steps:
