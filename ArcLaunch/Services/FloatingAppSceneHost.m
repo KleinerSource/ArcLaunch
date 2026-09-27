@@ -134,7 +134,7 @@ static BOOL ArcLaunchProcessIsAlive(pid_t processIdentifier) {
     }
     uint32_t stateStatus = notify_set_state(token, active ? (uint64_t)getpid() : 0);
     if (stateStatus == NOTIFY_STATUS_OK) {
-        self.keyboardBridgeActive = active;
+        _keyboardBridgeActive = active;
     }
     uint32_t postStatus = stateStatus == NOTIFY_STATUS_OK ? notify_post(notificationName.UTF8String) : stateStatus;
     notify_cancel(token);
