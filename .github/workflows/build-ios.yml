@@ -16,9 +16,10 @@ concurrency:
 
 jobs:
   changes:
-    name: Detect keyboard bridge changes
+    name: Detect changed components
     runs-on: ubuntu-latest
     outputs:
+      tipa: ${{ steps.filter.outputs.tipa }}
       keyboard_bridge: ${{ steps.filter.outputs.keyboard_bridge }}
     steps:
       - name: Check out source
@@ -57,6 +58,12 @@ jobs:
             changed_files="$(git show --format= --name-only "$GITHUB_SHA")"
           fi
 
+          if grep -Eq '^(ArcLaunch/|ArcLaunch\.xcodeproj/|Scripts/bump_version\.py$|Scripts/generate_app_icon\.py$|\.github/workflows/build-ios\.yml$)' <<< "$changed_files"; then
+            echo "tipa=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tipa=false" >> "$GITHUB_OUTPUT"
+          fi
+
           if grep -Eq '^(KeyboardBridgeTweak/|ArcLaunch/Services/FloatingAppSceneHost\.m$|\.github/workflows/build-keyboard-bridge\.yml$)' <<< "$changed_files"; then
             echo "keyboard_bridge=true" >> "$GITHUB_OUTPUT"
           else
@@ -65,6 +72,8 @@ jobs:
 
   build:
     name: Build TrollStore TIPA
+    needs: changes
+    if: needs.changes.outputs.tipa == 'true'
     runs-on: macos-15
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -237,14 +246,13 @@ jobs:
     name: Publish rolling release
     needs: [build, changes, keyboard_bridge]
     # main 发布标准版 latest，dev 分支发布开发版 testing；其它分支与拉取请求只产出 Actions 工件。
-    if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && needs.build.result == 'success' && needs.changes.result == 'success' && (needs.keyboard_bridge.result == 'success' || needs.keyboard_bridge.result == 'skipped')
+    if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && needs.changes.result == 'success' && (needs.build.result == 'success' || (github.ref == 'refs/heads/dev' && needs.build.result == 'skipped' && needs.keyboard_bridge.result == 'success'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
     env:
       # 应用内的更新检测读取这个滚动 Release，改名时要同步修改 ArcLaunchUpdateChecker.m。
       RELEASE_TAG: ${{ github.ref_name == 'main' && 'latest' || 'testing' }}
-      VERSION: ${{ needs.build.outputs.version }}
 
     steps:
       - name: Check out source
@@ -253,11 +261,25 @@ jobs:
           # 生成说明时要找到上一次发布以来的全部提交。
           fetch-depth: 0
 
-      - name: Download TIPA
+      - name: Download TIPA from this run
+        if: needs.build.result == 'success'
         uses: actions/download-artifact@v8
         with:
           name: ${{ needs.build.outputs.artifact_name }}
           path: release
+
+      - name: Reuse TIPA assets for a plugin-only development release
+        if: github.ref == 'refs/heads/dev' && needs.build.result == 'skipped'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern 'ArcLaunch_*.tipa' \
+            --pattern '*.tipa.sha256' \
+            --pattern 'xcodebuild.log' \
+            --dir release
 
       - name: Download keyboard bridge packages from this run
         if: github.ref == 'refs/heads/dev' && needs.keyboard_bridge.result == 'success'
@@ -268,7 +290,7 @@ jobs:
           merge-multiple: true
 
       - name: Preserve keyboard bridge packages from the previous release
-        if: github.ref == 'refs/heads/dev' && needs.keyboard_bridge.result == 'skipped'
+        if: github.ref == 'refs/heads/dev' && needs.build.result == 'success' && needs.keyboard_bridge.result != 'success'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -279,10 +301,18 @@ jobs:
       # 提交带 [skip ci]，而且 GITHUB_TOKEN 的推送本身也不会触发新的运行。
       - name: Persist build version
         env:
+          APP_VERSION: ${{ needs.build.outputs.version }}
           PLUGIN_VERSION: ${{ needs.keyboard_bridge.outputs.package_version }}
         run: |
           set -euo pipefail
-          python3 Scripts/bump_version.py --set "$VERSION"
+          if [[ -n "$APP_VERSION" ]]; then
+            VERSION="$APP_VERSION"
+            python3 Scripts/bump_version.py --set "$VERSION"
+            git add ArcLaunch/Info.plist
+          else
+            VERSION="$(python3 Scripts/bump_version.py)"
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           if [[ -n "$PLUGIN_VERSION" && "$GITHUB_REF_NAME" == "dev" ]]; then
             awk -v version="$PLUGIN_VERSION" 'BEGIN { replaced = 0 } /^[Vv]ersion:/ && !replaced { print "Version: " version; replaced = 1; next } { print } END { if (!replaced) exit 1 }' KeyboardBridgeTweak/control > KeyboardBridgeTweak/control.tmp
             mv KeyboardBridgeTweak/control.tmp KeyboardBridgeTweak/control
@@ -290,7 +320,6 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add ArcLaunch/Info.plist
           git commit -m "chore: bump build metadata to ${VERSION} [skip ci]"
           git push origin "HEAD:refs/heads/${GITHUB_REF_NAME}"
 
