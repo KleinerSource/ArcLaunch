@@ -2,7 +2,7 @@
 """生成 ArcLaunch 应用图标（1024×1024，无透明通道）。
 
 只依赖 Python 标准库：用有符号距离场绘制图形并做边缘抗锯齿，再手工编码为 PNG。
-图案取自应用本身：屏幕右侧的细长悬浮条，以及围绕它展开的两圈圆形应用图标。
+图案取自应用本身：左下角的细长悬浮条，以及朝右上方展开的三圈圆形应用图标。
 
 用法：python3 Scripts/generate_app_icon.py
 """
@@ -64,15 +64,16 @@ def main():
                 if a > 0.0:
                     blend(x, y, color, a)
 
-    handle_x, handle_y = 868.0, 512.0
+    handle_x, handle_y = 124.0, 900.0
 
     # 悬浮条后面的柔光，让它在深色背景上更醒目。
     for step in range(6, 0, -1):
-        draw_capsule(handle_x, handle_y, 36 + step * 16, 230 + step * 16, BAR_COLOR, 0.035)
+        draw_capsule(handle_x, handle_y, 36 + step * 12, 120 + step * 10, BAR_COLOR, 0.035)
 
-    # 两圈扇形排布的应用图标：内圈 5 个组成半圆，外圈 7 个。
-    rings = [(250.0, 5, 64.0, math.radians(90), math.radians(270)),
-             (450.0, 7, 58.0, math.radians(118), math.radians(242))]
+    # 三圈扇形排布的应用图标：从内到外分别为 3、5、7 个，圆点间距均匀。
+    rings = [(200.0, 3, 40.0, math.radians(282), math.radians(348)),
+             (340.0, 5, 40.0, math.radians(275), math.radians(355)),
+             (480.0, 7, 40.0, math.radians(273), math.radians(357))]
     color_index = 0
     for radius, count, item_radius, start, end in rings:
         for index in range(count):
@@ -86,7 +87,7 @@ def main():
             # 左上方的高光模拟图标的立体感。
             draw_circle(cx - item_radius * 0.28, cy - item_radius * 0.32, item_radius * 0.42, (255, 255, 255), 0.16)
 
-    draw_capsule(handle_x, handle_y, 36, 230, BAR_COLOR)
+    draw_capsule(handle_x, handle_y, 36, 120, BAR_COLOR)
 
     raw = bytearray()
     for row in pixels:
