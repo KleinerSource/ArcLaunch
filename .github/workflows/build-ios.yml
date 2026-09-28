@@ -15,6 +15,54 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect keyboard bridge changes
+    runs-on: ubuntu-latest
+    outputs:
+      keyboard_bridge: ${{ steps.filter.outputs.keyboard_bridge }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check changed paths
+        id: filter
+        env:
+          EVENT_BEFORE: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            base="$PR_BASE_SHA"
+          elif [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            base="$EVENT_BEFORE"
+          else
+            base="$(git rev-parse HEAD^ 2>/dev/null || true)"
+          fi
+
+          if [[ -z "$base" || "$base" =~ ^0+$ ]] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            base="$(git merge-base HEAD origin/dev 2>/dev/null || true)"
+            if [[ -z "$base" || "$base" == "$GITHUB_SHA" ]]; then
+              base="$(git merge-base HEAD origin/main 2>/dev/null || true)"
+            fi
+            if [[ -z "$base" || "$base" == "$GITHUB_SHA" ]]; then
+              base="$(git rev-parse HEAD^ 2>/dev/null || true)"
+            fi
+          fi
+
+          if [[ -n "$base" ]]; then
+            changed_files="$(git diff --no-renames --name-only "$base" "$GITHUB_SHA")"
+          else
+            changed_files="$(git show --format= --name-only "$GITHUB_SHA")"
+          fi
+
+          if grep -Eq '^(KeyboardBridgeTweak/|ArcLaunch/Services/FloatingAppSceneHost\.m$|\.github/workflows/build-keyboard-bridge\.yml$)' <<< "$changed_files"; then
+            echo "keyboard_bridge=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "keyboard_bridge=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     name: Build TrollStore TIPA
     runs-on: macos-15
@@ -179,19 +227,17 @@ jobs:
 
   keyboard_bridge:
     name: Build keyboard bridge packages
-    if: github.ref == 'refs/heads/dev'
-    needs: build
+    needs: changes
+    if: needs.changes.outputs.keyboard_bridge == 'true'
     uses: ./.github/workflows/build-keyboard-bridge.yml
-    with:
-      package_version: ${{ needs.build.outputs.version }}
     permissions:
       contents: read
 
   release:
     name: Publish rolling release
-    needs: [build, keyboard_bridge]
+    needs: [build, changes, keyboard_bridge]
     # main 发布标准版 latest，dev 分支发布开发版 testing；其它分支与拉取请求只产出 Actions 工件。
-    if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && needs.build.result == 'success' && (needs.keyboard_bridge.result == 'success' || needs.keyboard_bridge.result == 'skipped')
+    if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && needs.build.result == 'success' && needs.changes.result == 'success' && (needs.keyboard_bridge.result == 'success' || needs.keyboard_bridge.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -213,26 +259,35 @@ jobs:
           name: ${{ needs.build.outputs.artifact_name }}
           path: release
 
-      - name: Download arm64 keyboard bridge
-        if: github.ref == 'refs/heads/dev'
+      - name: Download keyboard bridge packages from this run
+        if: github.ref == 'refs/heads/dev' && needs.keyboard_bridge.result == 'success'
         uses: actions/download-artifact@v8
         with:
-          name: ArcLaunchKeyboardBridge-arm64
-          path: release/keyboard-bridge/arm64
+          pattern: ArcLaunchKeyboardBridge-*
+          path: release/keyboard-bridge
+          merge-multiple: true
 
-      - name: Download arm64e keyboard bridge
-        if: github.ref == 'refs/heads/dev'
-        uses: actions/download-artifact@v8
-        with:
-          name: ArcLaunchKeyboardBridge-arm64e
-          path: release/keyboard-bridge/arm64e
+      - name: Preserve keyboard bridge packages from the previous release
+        if: github.ref == 'refs/heads/dev' && needs.keyboard_bridge.result == 'skipped'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p release/keyboard-bridge
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern 'ArcLaunchKeyboardBridge-*.deb' --dir release/keyboard-bridge || true
 
       # 构建成功后才写回版本号，失败或被取消的构建不会占用版本号。
       # 提交带 [skip ci]，而且 GITHUB_TOKEN 的推送本身也不会触发新的运行。
       - name: Persist build version
+        env:
+          PLUGIN_VERSION: ${{ needs.keyboard_bridge.outputs.package_version }}
         run: |
           set -euo pipefail
           python3 Scripts/bump_version.py --set "$VERSION"
+          if [[ -n "$PLUGIN_VERSION" && "$GITHUB_REF_NAME" == "dev" ]]; then
+            awk -v version="$PLUGIN_VERSION" 'BEGIN { replaced = 0 } /^[Vv]ersion:/ && !replaced { print "Version: " version; replaced = 1; next } { print } END { if (!replaced) exit 1 }' KeyboardBridgeTweak/control > KeyboardBridgeTweak/control.tmp
+            mv KeyboardBridgeTweak/control.tmp KeyboardBridgeTweak/control
+            git add KeyboardBridgeTweak/control
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add ArcLaunch/Info.plist
@@ -254,11 +309,14 @@ jobs:
           test -n "$build_log_path"
           release_assets=("$tipa_path" "$checksum_path" "$build_log_path")
           if [[ "$GITHUB_REF_NAME" == "dev" ]]; then
-            keyboard_bridge_arm64="$(find release/keyboard-bridge/arm64 -type f -name 'ArcLaunchKeyboardBridge-arm64.deb' -print -quit)"
-            keyboard_bridge_arm64e="$(find release/keyboard-bridge/arm64e -type f -name 'ArcLaunchKeyboardBridge-arm64e.deb' -print -quit)"
-            test -n "$keyboard_bridge_arm64"
-            test -n "$keyboard_bridge_arm64e"
-            release_assets+=("$keyboard_bridge_arm64" "$keyboard_bridge_arm64e")
+            keyboard_bridge_arm64="$(find release/keyboard-bridge -type f -name 'ArcLaunchKeyboardBridge-arm64.deb' -print -quit)"
+            keyboard_bridge_arm64e="$(find release/keyboard-bridge -type f -name 'ArcLaunchKeyboardBridge-arm64e.deb' -print -quit)"
+            if [[ -n "$keyboard_bridge_arm64" && -n "$keyboard_bridge_arm64e" ]]; then
+              release_assets+=("$keyboard_bridge_arm64" "$keyboard_bridge_arm64e")
+            elif [[ -n "$keyboard_bridge_arm64" || -n "$keyboard_bridge_arm64e" ]]; then
+              echo "::error title=Incomplete keyboard bridge release::Both architecture packages must be present"
+              exit 1
+            fi
           fi
           notes_file="$(mktemp)"
           trap 'rm -f "$notes_file"' EXIT

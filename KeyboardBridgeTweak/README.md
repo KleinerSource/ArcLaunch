@@ -2,7 +2,7 @@
 
 这是一个 Theos 插件，针对 ArcLaunch 通过 FrontBoard 悬浮托管的应用启用 UIKit 窗口化软键盘策略。插件只在被托管应用中运行；ArcLaunch HUD 窗口保留系统默认的 key-window 行为，以保证悬浮菜单和触摸事件正常工作。
 
-GitHub Actions 只产出 `arm64` 和 `arm64e` 两个 `.deb`。`arm64` 包按 rootless scheme 构建并标记 `iphoneos-arm64`；`arm64e` 包按 RootHide scheme 构建并标记 `iphoneos-arm64e`，不需要安装后再转换。包版本跟随 ArcLaunch 的 `x.y.z+build` 版本。安装脚本会选择注入目录：rootless 使用 `/var/jb/Library/MobileSubstrate/DynamicLibraries`，rootful 和 RootHide 使用 `/Library/MobileSubstrate/DynamicLibraries`。
+GitHub Actions 只产出 `arm64` 和 `arm64e` 两个 `.deb`。`arm64` 包按 rootless scheme 构建并标记 `iphoneos-arm64`；`arm64e` 包按 RootHide scheme 构建并标记 `iphoneos-arm64e`，不需要安装后再转换。插件使用独立版本号，保存在 `control` 的 `Version` 字段中；插件相关文件有变更时才构建并递增 build 号，不随 ArcLaunch TIPA 版本变化。插件包只随 `dev` 发布，成功发布后才将新版本写回 `control`。安装脚本会选择注入目录：rootless 使用 `/var/jb/Library/MobileSubstrate/DynamicLibraries`，rootful 和 RootHide 使用 `/Library/MobileSubstrate/DynamicLibraries`。
 
 ArcLaunch 通过 Darwin 通知 `com.kleinersource.arclaunch.keyboardbridge.<bundle>` 将当前键盘显示模式传给 guest。iOS 17.0–17.3 的 FrontBoard presenter 需要 windowed 视觉模式保证键盘可用；选“全屏”后 HUD 临时铺满屏幕，并在键盘收起后恢复小窗。iOS 17.4 及以上使用 UIKit 场景托管；选“全屏”时插件关闭 windowed 视觉模式，让系统键盘按设备屏幕布局显示而悬浮应用保持小窗，选“小窗内”则沿用系统视觉模式。
 

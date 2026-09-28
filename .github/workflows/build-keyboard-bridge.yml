@@ -1,28 +1,12 @@
 name: Build ArcLaunch Keyboard Bridge
 
 on:
-  push:
-    branches-ignore:
-      - main
-      - dev
-    paths:
-      - "ArcLaunch/Services/FloatingAppSceneHost.m"
-      - "Scripts/bump_version.py"
-      - "KeyboardBridgeTweak/**"
-      - ".github/workflows/build-keyboard-bridge.yml"
-  pull_request:
-    paths:
-      - "ArcLaunch/Services/FloatingAppSceneHost.m"
-      - "Scripts/bump_version.py"
-      - "KeyboardBridgeTweak/**"
-      - ".github/workflows/build-keyboard-bridge.yml"
   workflow_dispatch:
   workflow_call:
-    inputs:
+    outputs:
       package_version:
-        description: ArcLaunch release version to use for the Debian packages.
-        required: false
-        type: string
+        description: Independent keyboard bridge package version.
+        value: ${{ jobs.build.outputs.package_version }}
 
 permissions:
   contents: read
@@ -31,11 +15,26 @@ jobs:
   build:
     name: Build architecture packages
     runs-on: macos-15
+    outputs:
+      package_version: ${{ steps.version.outputs.version }}
     steps:
       - name: Check out source
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+
+      - name: Compute keyboard bridge version
+        id: version
+        run: |
+          set -euo pipefail
+          current_version="$(awk '$1 == "Version:" { print $2; exit }' KeyboardBridgeTweak/control)"
+          if [[ ! "$current_version" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\+([0-9]+)$ ]]; then
+            echo "::error title=Invalid plugin version::Expected x.y.z+build in KeyboardBridgeTweak/control, got $current_version"
+            exit 1
+          fi
+          version="${BASH_REMATCH[1]}+$((10#${BASH_REMATCH[2]} + 1))"
+          echo "Keyboard bridge package version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Install build dependencies
         run: brew install dpkg make
@@ -51,17 +50,11 @@ jobs:
           echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
 
       - name: Build arm64 and arm64e packages for all jailbreak layouts
-        env:
-          RELEASE_VERSION: ${{ inputs.package_version }}
         run: |
           set -euo pipefail
           artifact_dir="$RUNNER_TEMP/ArcLaunchKeyboardBridge"
           mkdir -p "$artifact_dir"
-          if [[ -n "$RELEASE_VERSION" ]]; then
-            version="$RELEASE_VERSION"
-          else
-            version="$(python3 Scripts/bump_version.py --auto)"
-          fi
+          version="${{ steps.version.outputs.version }}"
           echo "Keyboard bridge package version: $version"
 
           build_package() {

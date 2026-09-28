@@ -1,7 +1,7 @@
 ARCHS = arm64 arm64e
 TARGET = iphone:clang:latest:17.0
 THEOS_PACKAGE_SCHEME = rootless
-PACKAGE_VERSION ?= $(shell python3 ../Scripts/bump_version.py)
+PACKAGE_VERSION ?= $(shell awk '$$1 == "Version:" { print $$2; exit }' control)
 
 include $(THEOS)/makefiles/common.mk
 
