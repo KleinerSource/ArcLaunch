@@ -91,7 +91,7 @@ jobs:
             sh -n "$package_root/DEBIAN/postinst"
             sh -n "$package_root/DEBIAN/prerm"
 
-            local package="$artifact_dir/ArcLaunchKeyboardBridge-${arch}.deb"
+            local package="$artifact_dir/ArcLaunchKeyboardBridge-${version}-${arch}.deb"
             dpkg-deb --build "$package_root" "$package"
             test "$(dpkg-deb -f "$package" Architecture)" = "$package_arch"
             test "$(dpkg-deb -f "$package" Version)" = "$version"
@@ -111,7 +111,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ArcLaunchKeyboardBridge-arm64
-          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-arm64.deb
+          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-${{ steps.version.outputs.version }}-arm64.deb
           if-no-files-found: error
           retention-days: 30
 
@@ -119,6 +119,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ArcLaunchKeyboardBridge-arm64e
-          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-arm64e.deb
+          path: ${{ runner.temp }}/ArcLaunchKeyboardBridge/ArcLaunchKeyboardBridge-${{ steps.version.outputs.version }}-arm64e.deb
           if-no-files-found: error
           retention-days: 30

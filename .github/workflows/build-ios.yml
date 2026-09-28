@@ -309,8 +309,8 @@ jobs:
           test -n "$build_log_path"
           release_assets=("$tipa_path" "$checksum_path" "$build_log_path")
           if [[ "$GITHUB_REF_NAME" == "dev" ]]; then
-            keyboard_bridge_arm64="$(find release/keyboard-bridge -type f -name 'ArcLaunchKeyboardBridge-arm64.deb' -print -quit)"
-            keyboard_bridge_arm64e="$(find release/keyboard-bridge -type f -name 'ArcLaunchKeyboardBridge-arm64e.deb' -print -quit)"
+            keyboard_bridge_arm64="$(find release/keyboard-bridge -type f -name 'ArcLaunchKeyboardBridge*arm64.deb' -print -quit)"
+            keyboard_bridge_arm64e="$(find release/keyboard-bridge -type f -name 'ArcLaunchKeyboardBridge*arm64e.deb' -print -quit)"
             if [[ -n "$keyboard_bridge_arm64" && -n "$keyboard_bridge_arm64e" ]]; then
               release_assets+=("$keyboard_bridge_arm64" "$keyboard_bridge_arm64e")
             elif [[ -n "$keyboard_bridge_arm64" || -n "$keyboard_bridge_arm64e" ]]; then

@@ -14,3 +14,29 @@ cp -f "$payload/ArcLaunchGuestKeyboardBridge.dylib" "$destination/ArcLaunchGuest
 cp -f "$payload/ArcLaunchGuestKeyboardBridge.plist" "$destination/ArcLaunchGuestKeyboardBridge.plist"
 chmod 755 "$destination/ArcLaunchGuestKeyboardBridge.dylib"
 chmod 644 "$destination/ArcLaunchGuestKeyboardBridge.plist"
+
+case "$1" in
+    configure) ;;
+    *) exit 0 ;;
+esac
+
+for sbreload in /var/jb/usr/bin/sbreload /usr/bin/sbreload; do
+    if [ -x "$sbreload" ]; then
+        "$sbreload" >/dev/null 2>&1 && exit 0
+    fi
+done
+
+if command -v sbreload >/dev/null 2>&1; then
+    sbreload >/dev/null 2>&1 && exit 0
+fi
+
+for killall in /var/jb/usr/bin/killall /usr/bin/killall /bin/killall; do
+    if [ -x "$killall" ]; then
+        "$killall" -9 SpringBoard >/dev/null 2>&1 || true
+        exit 0
+    fi
+done
+
+if command -v killall >/dev/null 2>&1; then
+    killall -9 SpringBoard >/dev/null 2>&1 || true
+fi
