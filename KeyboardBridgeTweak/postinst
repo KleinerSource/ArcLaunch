@@ -20,23 +20,6 @@ case "$1" in
     *) exit 0 ;;
 esac
 
-for sbreload in /var/jb/usr/bin/sbreload /usr/bin/sbreload; do
-    if [ -x "$sbreload" ]; then
-        "$sbreload" >/dev/null 2>&1 && exit 0
-    fi
-done
-
-if command -v sbreload >/dev/null 2>&1; then
-    sbreload >/dev/null 2>&1 && exit 0
-fi
-
-for killall in /var/jb/usr/bin/killall /usr/bin/killall /bin/killall; do
-    if [ -x "$killall" ]; then
-        "$killall" -9 SpringBoard >/dev/null 2>&1 || true
-        exit 0
-    fi
-done
-
-if command -v killall >/dev/null 2>&1; then
-    killall -9 SpringBoard >/dev/null 2>&1 || true
+if [ -n "${SILEO:-}${CYDIA:-}" ]; then
+    printf '%s\n' 'finish:restart' >&6 2>/dev/null || true
 fi

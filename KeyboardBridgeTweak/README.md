@@ -10,7 +10,7 @@ ArcLaunch 通过 Darwin 通知 `com.kleinersource.arclaunch.keyboardbridge.<bund
 
 1. 从 `testing`（dev）GitHub Release 下载带版本号的 `ArcLaunchKeyboardBridge-<版本>-arm64.deb` 或 `ArcLaunchKeyboardBridge-<版本>-arm64e.deb`；插件包只随开发版发布。越狱类型由安装脚本处理。用 Relaxin 的包管理器安装。
 2. 确认 ElleKit 对 ArcLaunch 和需要悬浮运行的应用启用了 tweak 注入。
-3. 安装或升级后会自动重启 SpringBoard；随后重新打开 ArcLaunch 和已运行的 guest 应用，使它们加载新插件。
+3. 安装或升级后，Sileo 会提示重启 SpringBoard；选择重启后，再重新打开 ArcLaunch 和已运行的 guest 应用，使它们加载新插件。
 
 ## 验收
 
