@@ -43,7 +43,7 @@ ArcLaunch（中文名：快捷启动器）是一个仅面向 TrollStore 的 iPho
 
 `ArcLaunchTests` 覆盖设置 JSON 回退、48 项上限、图标尺寸、两种间距、外观选项、排序持久化、每个应用的悬浮窗开关、扇形几何（边界、间距、每圈容量、展开方向）、悬浮窗几何（缩放范围、宽高比、安全区限制、收起判定、收纳区排列）、版本比较与 Release 解析和桥接层 mock。SpringBoard 窗口注册、LaunchServices 启动行为、悬浮分屏的场景托管与触摸以及 TrollStore 在线安装必须在真机上验证。版本递增策略的测试用 `python3 -m unittest discover -s Scripts` 运行，CI 每次构建前也会执行。
 
-应用图标由 `Scripts/generate_app_icon.py`（仅依赖 Python 标准库）生成，修改图案后重新运行即可覆盖 `ArcLaunch/Assets.xcassets/AppIcon.appiconset/AppIcon.png`。
+应用图标直接维护在 `ArcLaunch/Assets.xcassets/AppIcon.appiconset/AppIcon.png`，使用 1024×1024 无透明通道 PNG。
 
 ## 版本号
 

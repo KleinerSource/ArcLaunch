@@ -14,7 +14,7 @@ ArcLaunch 通过 Darwin 通知 `com.kleinersource.arclaunch.keyboardbridge.<bund
 
 ## 验收
 
-在 iOS 17.0–17.3.1 设备上，测试键盘弹出后悬浮窗是否铺满屏幕、输入及收起后是否恢复；在 iOS 17.4 及以上设备上，测试全屏模式的键盘是否按设备屏幕布局显示且悬浮应用仍保持小窗。确认扇形菜单、悬浮条拖动与窗口缩放正常。用系统日志筛选 `ArcLaunchKeyboardBridge`，应能看到 guest 应用收到 HUD PID 与 fullscreen 模式位的记录。
+在 iOS 17.0–17.3.1 设备上，测试键盘弹出后悬浮窗是否铺满屏幕、输入及收起后是否恢复；在 iOS 17.4 及以上设备上，测试全屏模式的键盘是否按设备屏幕布局显示且悬浮应用仍保持小窗。确认扇形菜单、悬浮条拖动与窗口缩放正常。另需覆盖“先全屏运行应用、再从扇形菜单以小窗打开同一应用”的附加路径：点按输入框时键盘应在悬浮窗中弹出，日志应出现 `Making ... key for text input`。用系统日志筛选 `ArcLaunchKeyboardBridge`，应能看到 guest 应用收到 HUD PID 与 fullscreen 模式位的记录。
 
 ## 构建
 
