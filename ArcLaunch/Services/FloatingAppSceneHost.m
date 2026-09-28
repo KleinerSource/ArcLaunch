@@ -33,13 +33,18 @@ static BOOL ArcLaunchProcessIsAlive(pid_t processIdentifier) {
 @property (nonatomic) BOOL processExited;
 @property (nonatomic) BOOL invalidated;
 @property (nonatomic) BOOL keyboardBridgeActive;
+/// 已成功发布给 guest 的状态；与待发布状态相同时不重复发布。
+@property (nonatomic) uint64_t publishedKeyboardBridgeState;
+/// 桥接启用期间一直持有的注册，notifyd 在名称没有任何注册时会丢弃状态。
+@property (nonatomic) int keyboardStateToken;
 @property (nonatomic) int keyboardShownToken;
 @property (nonatomic) int keyboardHiddenToken;
 - (BOOL)createHostedSceneForProcessHandle:(RBSProcessHandle *)handle failureReason:(NSString **)failureReason API_AVAILABLE(ios(17.4));
 - (void)applyInitialSettingsToHostedScene:(FBScene *)scene;
 - (void)configureEventDeferringForHostingController:(_UISceneHostingController *)hostingController viewController:(UIViewController *)viewController;
 - (void)setKeyboardBridgeActive:(BOOL)active;
-- (void)publishKeyboardBridgeStateForActive:(BOOL)active;
+- (BOOL)keyboardBridgeUsesNativeHosting;
+- (void)publishKeyboardBridgeState;
 - (void)observeGuestKeyboard;
 - (void)stopObservingGuestKeyboard;
 - (void)handleGuestKeyboardVisible:(BOOL)visible;
@@ -53,6 +58,7 @@ static BOOL ArcLaunchProcessIsAlive(pid_t processIdentifier) {
         _bundleIdentifier = [bundleIdentifier copy];
         _parentViewController = parentViewController;
         _userInterfaceStyle = UIUserInterfaceStyleLight;
+        _keyboardStateToken = NOTIFY_TOKEN_INVALID;
         _keyboardShownToken = NOTIFY_TOKEN_INVALID;
         _keyboardHiddenToken = NOTIFY_TOKEN_INVALID;
     }
@@ -62,6 +68,10 @@ static BOOL ArcLaunchProcessIsAlive(pid_t processIdentifier) {
 - (void)dealloc {
     if (_processExitSource) {
         dispatch_source_cancel(_processExitSource);
+    }
+    if (_keyboardStateToken != NOTIFY_TOKEN_INVALID) {
+        notify_set_state(_keyboardStateToken, 0);
+        notify_cancel(_keyboardStateToken);
     }
     if (_keyboardShownToken != NOTIFY_TOKEN_INVALID) {
         notify_cancel(_keyboardShownToken);
@@ -74,6 +84,20 @@ static BOOL ArcLaunchProcessIsAlive(pid_t processIdentifier) {
 #pragma mark - 启动
 
 - (void)startWithCompletion:(ArcLaunchFloatingSceneCompletion)completion {
+    // guest 的 UIKit 在启动和场景连接时就会决定键盘策略；状态必须在启动/附加前发布，
+    // 让插件在 %ctor 中同步读到，而不是等场景建好后才异步送达。
+    [self observeGuestKeyboard];
+    [self setKeyboardBridgeActive:YES];
+    __weak typeof(self) weakSelf = self;
+    ArcLaunchFloatingSceneCompletion startCompletion = completion;
+    completion = ^(BOOL success, NSString * _Nullable failureReason) {
+        if (!success) {
+            [weakSelf stopObservingGuestKeyboard];
+            [weakSelf setKeyboardBridgeActive:NO];
+        }
+        startCompletion(success, failureReason);
+    };
+
     RBSProcessHandle *handle = [self runningProcessHandle];
     if (handle) {
         self.launchedByHost = NO;
@@ -103,7 +127,6 @@ static BOOL ArcLaunchProcessIsAlive(pid_t processIdentifier) {
         return;
     }
 
-    __weak typeof(self) weakSelf = self;
     [transaction setCompletionBlock:^{
         dispatch_async(dispatch_get_main_queue(), ^{
             typeof(self) strongSelf = weakSelf;
@@ -132,18 +155,18 @@ static BOOL ArcLaunchProcessIsAlive(pid_t processIdentifier) {
     }
     // iOS 17.0–17.3 使用裸 FrontBoard presenter，tweak 在 guest 进程中开启 windowed keyboard；
     // UIKit 场景托管由系统处理键盘布局，同时接收全屏模式标志。
-    [self observeGuestKeyboard];
-    [self setKeyboardBridgeActive:YES];
+    // 启动前按预测的托管方式发布过状态；UIKit 托管失败回退到 presenter 时在此纠正。
+    [self publishKeyboardBridgeState];
     [self monitorProcessExit];
     completion(YES, nil);
 }
 
 - (void)setKeyboardBridgeActive:(BOOL)active {
-    if (self.keyboardBridgeActive == active) {
+    if (_keyboardBridgeActive == active) {
         return;
     }
-
-    [self publishKeyboardBridgeStateForActive:active];
+    _keyboardBridgeActive = active;
+    [self publishKeyboardBridgeState];
 }
 
 - (void)setFullScreenKeyboardEnabled:(BOOL)fullScreenKeyboardEnabled {
@@ -152,39 +175,71 @@ static BOOL ArcLaunchProcessIsAlive(pid_t processIdentifier) {
     }
     _fullScreenKeyboardEnabled = fullScreenKeyboardEnabled;
     if (self.keyboardBridgeActive) {
-        [self publishKeyboardBridgeStateForActive:YES];
+        [self publishKeyboardBridgeState];
     }
 }
 
-- (void)publishKeyboardBridgeStateForActive:(BOOL)active {
-    NSString *notificationName = [NSString stringWithFormat:@"com.kleinersource.arclaunch.keyboardbridge.%@", self.bundleIdentifier];
-    int token = NOTIFY_TOKEN_INVALID;
-    if (notify_register_check(notificationName.UTF8String, &token) != NOTIFY_STATUS_OK) {
-        NSLog(@"[ArcLaunchKeyboardBridge] Could not register %@", notificationName);
-        return;
+// 场景建好后以实际路径为准；之前按 createSceneForProcessHandle: 的选择预测。
+- (BOOL)keyboardBridgeUsesNativeHosting {
+    if (self.hostingController) {
+        return YES;
     }
+    if (self.presenter) {
+        return NO;
+    }
+    if (@available(iOS 17.4, *)) {
+        return ArcLaunchPrivateClass(_UISceneHostingControllerAdvancedConfiguration) && ArcLaunchPrivateClass(_UISceneHostingController) && self.parentViewController;
+    }
+    return NO;
+}
+
+- (void)publishKeyboardBridgeState {
+    NSString *notificationName = [NSString stringWithFormat:@"com.kleinersource.arclaunch.keyboardbridge.%@", self.bundleIdentifier];
+    BOOL active = self.keyboardBridgeActive;
+    if (self.keyboardStateToken == NOTIFY_TOKEN_INVALID) {
+        if (!active) {
+            return;
+        }
+        int token = NOTIFY_TOKEN_INVALID;
+        if (notify_register_check(notificationName.UTF8String, &token) != NOTIFY_STATUS_OK) {
+            NSLog(@"[ArcLaunchKeyboardBridge] Could not register %@", notificationName);
+            return;
+        }
+        self.keyboardStateToken = token;
+        self.publishedKeyboardBridgeState = 0;
+    }
+
+    BOOL nativeHosting = [self keyboardBridgeUsesNativeHosting];
     uint64_t state = 0;
     if (active) {
         state = (uint64_t)getpid();
-        if (self.hostingController) {
+        if (nativeHosting) {
             state |= ArcLaunchKeyboardBridgeNativeHostingFlag;
         }
         if (self.fullScreenKeyboardEnabled) {
             state |= ArcLaunchKeyboardBridgeFullScreenKeyboardFlag;
         }
     }
-    uint32_t stateStatus = notify_set_state(token, state);
-    if (stateStatus == NOTIFY_STATUS_OK) {
-        _keyboardBridgeActive = active;
+    if (active && state == self.publishedKeyboardBridgeState) {
+        return;
     }
+    uint32_t stateStatus = notify_set_state(self.keyboardStateToken, state);
     uint32_t postStatus = stateStatus == NOTIFY_STATUS_OK ? notify_post(notificationName.UTF8String) : stateStatus;
-    notify_cancel(token);
+    if (stateStatus == NOTIFY_STATUS_OK) {
+        self.publishedKeyboardBridgeState = state;
+    }
+    if (!active) {
+        // 先清零再注销；guest 仍注册时 notifyd 保留 0，否则名称连同状态一起释放。
+        notify_cancel(self.keyboardStateToken);
+        self.keyboardStateToken = NOTIFY_TOKEN_INVALID;
+        self.publishedKeyboardBridgeState = 0;
+    }
     if (stateStatus != NOTIFY_STATUS_OK || postStatus != NOTIFY_STATUS_OK) {
         NSLog(@"[ArcLaunchKeyboardBridge] Could not publish %@ (state=%u, post=%u)", notificationName, stateStatus, postStatus);
         return;
     }
 
-    NSLog(@"[ArcLaunchKeyboardBridge] %@ keyboard bridge for %@ (HUD PID %d, fullscreen=%d, native=%d)", active ? @"Enabled" : @"Disabled", self.bundleIdentifier, getpid(), self.fullScreenKeyboardEnabled, self.hostingController != nil);
+    NSLog(@"[ArcLaunchKeyboardBridge] %@ keyboard bridge for %@ (HUD PID %d, fullscreen=%d, native=%d)", active ? @"Enabled" : @"Disabled", self.bundleIdentifier, getpid(), self.fullScreenKeyboardEnabled, nativeHosting);
 }
 
 - (void)observeGuestKeyboard {
