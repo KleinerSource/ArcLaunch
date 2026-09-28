@@ -143,7 +143,8 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
                 return ArcLaunchTriggerRowCount - 1 - (self.triggerFineTuningExpanded ? 0 : ArcLaunchTriggerFineTuningRowCount);
             }
             return ArcLaunchTriggerRowAreaSize + 1;
-        case ArcLaunchConfigurationSectionAppearance: return ArcLaunchAppearanceRowCount;
+        case ArcLaunchConfigurationSectionAppearance:
+            return ArcLaunchAppearanceRowCount - (self.settingsStore.settings.menuTriggerMode == ArcLaunchMenuTriggerModeFixedCorners ? 1 : 0);
         case ArcLaunchConfigurationSectionLayout: return ArcLaunchLayoutRowCount;
         case ArcLaunchConfigurationSectionFloatingSplit: return ArcLaunchFloatingSplitRowCount;
         case ArcLaunchConfigurationSectionShortcuts: return ArcLaunchShortcutActionRowCount + self.settingsStore.settings.shortcuts.count;
@@ -424,17 +425,18 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
 
 - (UITableViewCell *)appearanceCellForRow:(NSInteger)row {
     ArcLaunchSettings *settings = self.settingsStore.settings;
-    if (row == ArcLaunchAppearanceRowBackdropBlur) {
+    NSInteger controlRow = row + (settings.menuTriggerMode == ArcLaunchMenuTriggerModeFixedCorners ? 1 : 0);
+    if (controlRow == ArcLaunchAppearanceRowBackdropBlur) {
         UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"BlurCell"] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:@"BlurCell"];
         UISlider *slider = [cell.accessoryView isKindOfClass:UISlider.class] ? (UISlider *)cell.accessoryView : nil;
         if (!slider) {
             slider = [[UISlider alloc] initWithFrame:CGRectMake(0.0, 0.0, 150.0, 32.0)];
             slider.minimumValue = ArcLaunchMinimumBackdropBlur;
             slider.maximumValue = 1.0;
-            slider.tag = row;
             [slider addTarget:self action:@selector(appearanceSliderChanged:) forControlEvents:UIControlEventValueChanged];
             cell.accessoryView = slider;
         }
+        slider.tag = row;
         BOOL backdropEnabled = settings.backdropStyle != ArcLaunchBackdropStyleNone;
         slider.value = settings.backdropBlur;
         slider.enabled = backdropEnabled;
@@ -452,13 +454,13 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
         [segmentedControl addTarget:self action:@selector(appearanceStyleChanged:) forControlEvents:UIControlEventValueChanged];
         cell.accessoryView = segmentedControl;
     }
-    BOOL handleRow = row == ArcLaunchAppearanceRowHandleStyle;
+    BOOL handleRow = controlRow == ArcLaunchAppearanceRowHandleStyle;
     NSArray<NSString *> *titles = handleRow ? @[@"自动", @"亮色", @"暗色", @"隐藏"] : @[@"自动", @"亮色", @"暗色", @"无"];
     [segmentedControl removeAllSegments];
     [titles enumerateObjectsUsingBlock:^(NSString * _Nonnull title, NSUInteger index, BOOL * _Nonnull stop) {
         [segmentedControl insertSegmentWithTitle:title atIndex:index animated:NO];
     }];
-    segmentedControl.tag = row;
+    segmentedControl.tag = controlRow;
     segmentedControl.selectedSegmentIndex = [self segmentIndexForStyle:handleRow ? settings.handleStyle : settings.backdropStyle];
     cell.textLabel.text = handleRow ? @"悬浮条" : @"毛玻璃";
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
