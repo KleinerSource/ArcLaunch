@@ -21,7 +21,7 @@ ArcLaunch（中文名：快捷启动器）是一个仅面向 TrollStore 的 iPho
 ## 能力边界
 
 - 支持 iOS 15 起的系统；实际安装前应确认设备系统受当前 TrollStore 版本支持。
-- 手电筒通过 AVFoundation 控制设备闪光灯，无需安装额外插件；首次使用时会请求相机权限。
+- 手电筒通过 AVFoundation 控制设备闪光灯，无需安装额外插件或相机权限。
 - 全局 HUD 依赖 SpringBoard accessibility window hosting 私有接口和 TrollStore 权限，不可通过 App Store 发布。HUD 子进程沿用 TrollSpeed 的插件模式启动方式，不使用 UIScene。
 - 注销 SpringBoard（respring）后悬浮条会自动重新注册并恢复；设备重启或用户在应用切换器中强制结束 ArcLaunch 后，需要从主屏重新打开一次。
 - HUD 窗口固定为竖屏坐标系，横屏时悬浮条仍位于竖屏方向的左右边缘。

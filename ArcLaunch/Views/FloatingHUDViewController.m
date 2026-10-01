@@ -106,7 +106,6 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 - (void)cancelFloatingModeTimer;
 - (void)startFloatingModeTimerForItemView:(UIView *)itemView;
 - (void)toggleFlashlight;
-- (void)toggleFlashlightWithAuthorization;
 - (UIView *)floatingBadgeViewForItemSize:(CGFloat)itemSize;
 - (CGRect)menuSafeBounds;
 @end
@@ -1018,34 +1017,8 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 }
 
 - (void)toggleFlashlight {
-    AVAuthorizationStatus authorizationStatus = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
-    if (authorizationStatus == AVAuthorizationStatusNotDetermined) {
-        __weak typeof(self) weakSelf = self;
-        [AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo completionHandler:^(BOOL granted) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                FloatingHUDViewController *strongSelf = weakSelf;
-                if (!strongSelf) {
-                    return;
-                }
-                if (!granted) {
-                    [strongSelf showFeedback:@"需要相机权限才能使用手电筒"];
-                    return;
-                }
-                [strongSelf toggleFlashlightWithAuthorization];
-            });
-        }];
-        return;
-    }
-    if (authorizationStatus != AVAuthorizationStatusAuthorized) {
-        [self showFeedback:@"需要相机权限才能使用手电筒"];
-        return;
-    }
-    [self toggleFlashlightWithAuthorization];
-}
-
-- (void)toggleFlashlightWithAuthorization {
     AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
-    if (!device || ![device hasTorch] || ![device isTorchAvailable]) {
+    if (!device || ![device hasTorch]) {
         [self showFeedback:@"当前设备没有可用的手电筒"];
         return;
     }
@@ -1055,14 +1028,16 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
         [self showFeedback:@"手电筒暂不可用"];
         return;
     }
-    if ([device torchMode] == AVCaptureTorchModeOn) {
+    BOOL torchWasOn = [device torchMode] == AVCaptureTorchModeOn;
+    if (torchWasOn) {
         [device setTorchMode:AVCaptureTorchModeOff];
     } else if (![device setTorchModeOnWithLevel:1.0 error:&error]) {
         [device unlockForConfiguration];
-        [self showFeedback:@"无法开启手电筒"];
+        [self showFeedback:@"无法开启手电筒，请确认相机或手电筒没有被其他应用占用"];
         return;
     }
     [device unlockForConfiguration];
+    [self showFeedback:torchWasOn ? @"手电筒已关闭" : @"手电筒已开启"];
 }
 
 - (void)launchShortcut:(ArcLaunchShortcut *)shortcut inFloatingWindow:(BOOL)inFloatingWindow {
