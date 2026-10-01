@@ -95,8 +95,13 @@ static const CGFloat ArcLaunchArrangementPickupSlop = 8.0;
     UIImageView *iconView = [UIImageView new];
     iconView.clipsToBounds = YES;
     iconView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    UIImage *icon = [self.applicationBridge iconForBundleIdentifier:shortcut.bundleIdentifier];
-    if (icon) {
+    UIImage *icon = shortcut.isSystemAction ? [UIImage systemImageNamed:shortcut.systemActionSymbolName ?: @"app.fill"] : [self.applicationBridge iconForBundleIdentifier:shortcut.bundleIdentifier];
+    if (shortcut.isSystemAction) {
+        iconView.image = icon;
+        iconView.tintColor = UIColor.whiteColor;
+        iconView.backgroundColor = [UIColor colorWithWhite:0.18 alpha:0.95];
+        iconView.contentMode = UIViewContentModeCenter;
+    } else if (icon) {
         iconView.image = icon;
         iconView.contentMode = UIViewContentModeScaleAspectFill;
     } else {

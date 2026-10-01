@@ -59,6 +59,8 @@
     </array>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <key>NSCameraUsageDescription</key>
+    <string>ArcLaunch 使用设备闪光灯提供手电筒快捷操作。</string>
     <key>MinimumOSVersion</key>
     <string>15.0</string>
     <key>UIApplicationSystemWindowsSecureKey</key>

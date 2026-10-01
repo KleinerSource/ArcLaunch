@@ -30,6 +30,10 @@ const CGFloat ArcLaunchMinimumFixedTriggerCornerRadius = 0.0;
 const CGFloat ArcLaunchMaximumFixedTriggerCornerRadius = 60.0;
 static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
 
+static BOOL ArcLaunchIsSupportedSystemActionIdentifier(NSString *identifier) {
+    return [identifier isEqualToString:ArcLaunchSystemActionFlashlight];
+}
+
 @implementation ArcLaunchShortcut
 
 - (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier displayName:(NSString *)displayName {
@@ -42,28 +46,64 @@ static NSInteger const ArcLaunchSettingsSchemaVersion = 1;
     return self;
 }
 
+- (nullable instancetype)initWithSystemActionIdentifier:(NSString *)systemActionIdentifier displayName:(NSString *)displayName {
+    if (!ArcLaunchIsSupportedSystemActionIdentifier(systemActionIdentifier)) {
+        return nil;
+    }
+    self = [super init];
+    if (self) {
+        _identifier = [NSUUID UUID];
+        _systemActionIdentifier = [systemActionIdentifier copy];
+        _bundleIdentifier = [[ArcLaunchSystemShortcutBundleIdentifierPrefix stringByAppendingString:systemActionIdentifier] copy];
+        _displayName = [(displayName.length > 0 ? displayName : systemActionIdentifier) copy];
+    }
+    return self;
+}
+
+- (BOOL)isSystemAction {
+    return self.systemActionIdentifier.length > 0;
+}
+
+- (NSString *)systemActionSymbolName {
+    if ([self.systemActionIdentifier isEqualToString:ArcLaunchSystemActionFlashlight]) {
+        return @"flashlight.on.fill";
+    }
+    return nil;
+}
+
 - (id)copyWithZone:(NSZone *)zone {
-    ArcLaunchShortcut *copy = [[[self class] allocWithZone:zone] initWithBundleIdentifier:self.bundleIdentifier displayName:self.displayName];
+    ArcLaunchShortcut *copy = self.isSystemAction ?
+        [[[self class] allocWithZone:zone] initWithSystemActionIdentifier:self.systemActionIdentifier displayName:self.displayName] :
+        [[[self class] allocWithZone:zone] initWithBundleIdentifier:self.bundleIdentifier displayName:self.displayName];
     [copy setValue:self.identifier forKey:@"_identifier"];
     return copy;
 }
 
 - (NSDictionary<NSString *,id> *)dictionaryRepresentation {
-    return @{
+    NSMutableDictionary<NSString *, id> *representation = [@{
         @"id": self.identifier.UUIDString,
         @"bundleIdentifier": self.bundleIdentifier ?: @"",
         @"displayName": self.displayName ?: @"",
-    };
+    } mutableCopy];
+    if (self.systemActionIdentifier.length > 0) {
+        representation[@"systemActionIdentifier"] = self.systemActionIdentifier;
+    }
+    return representation;
 }
 
 + (instancetype)shortcutFromDictionary:(NSDictionary<NSString *,id> *)dictionary {
     NSString *bundleIdentifier = [dictionary[@"bundleIdentifier"] isKindOfClass:NSString.class] ? dictionary[@"bundleIdentifier"] : nil;
-    NSString *displayName = [dictionary[@"displayName"] isKindOfClass:NSString.class] ? dictionary[@"displayName"] : bundleIdentifier;
-    if (bundleIdentifier.length == 0 || displayName.length == 0) {
+    NSString *displayName = [dictionary[@"displayName"] isKindOfClass:NSString.class] ? dictionary[@"displayName"] : nil;
+    NSString *systemActionIdentifier = [dictionary[@"systemActionIdentifier"] isKindOfClass:NSString.class] ? dictionary[@"systemActionIdentifier"] : nil;
+    ArcLaunchShortcut *shortcut = nil;
+    if (systemActionIdentifier.length > 0) {
+        shortcut = [[self alloc] initWithSystemActionIdentifier:systemActionIdentifier displayName:displayName ?: systemActionIdentifier];
+    } else if (bundleIdentifier.length > 0 && displayName.length > 0) {
+        shortcut = [[self alloc] initWithBundleIdentifier:bundleIdentifier displayName:displayName];
+    }
+    if (!shortcut) {
         return nil;
     }
-
-    ArcLaunchShortcut *shortcut = [[self alloc] initWithBundleIdentifier:bundleIdentifier displayName:displayName];
     NSString *identifier = [dictionary[@"id"] isKindOfClass:NSString.class] ? dictionary[@"id"] : nil;
     NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:identifier];
     if (uuid) {

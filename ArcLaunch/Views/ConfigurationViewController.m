@@ -62,11 +62,12 @@ typedef NS_ENUM(NSInteger, ArcLaunchFloatingSplitRow) {
     ArcLaunchFloatingSplitRowCount = 3,
 };
 
-// 快捷应用分组开头的两个操作行，其后才是各个应用。
+// 快捷操作分组开头的三个操作行，其后才是已添加的快捷项。
 typedef NS_ENUM(NSInteger, ArcLaunchShortcutActionRow) {
-    ArcLaunchShortcutActionRowAdd = 0,
-    ArcLaunchShortcutActionRowArrange = 1,
-    ArcLaunchShortcutActionRowCount = 2,
+    ArcLaunchShortcutActionRowAddApplication = 0,
+    ArcLaunchShortcutActionRowAddFlashlight = 1,
+    ArcLaunchShortcutActionRowArrange = 2,
+    ArcLaunchShortcutActionRowCount = 3,
 };
 
 typedef NS_ENUM(NSInteger, ArcLaunchUpdateRow) {
@@ -161,7 +162,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
         case ArcLaunchConfigurationSectionAppearance: return @"外观";
         case ArcLaunchConfigurationSectionLayout: return @"菜单布局";
         case ArcLaunchConfigurationSectionFloatingSplit: return @"悬浮分屏";
-        case ArcLaunchConfigurationSectionShortcuts: return [NSString stringWithFormat:@"快捷应用（%lu/%lu）", (unsigned long)self.settingsStore.settings.shortcuts.count, (unsigned long)ArcLaunchMaximumShortcuts];
+        case ArcLaunchConfigurationSectionShortcuts: return [NSString stringWithFormat:@"快捷操作（%lu/%lu）", (unsigned long)self.settingsStore.settings.shortcuts.count, (unsigned long)ArcLaunchMaximumShortcuts];
         case ArcLaunchConfigurationSectionSupport: return @"系统能力";
         case ArcLaunchConfigurationSectionUpdate: return @"软件更新";
     }
@@ -181,7 +182,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
         case ArcLaunchConfigurationSectionFloatingSplit:
             return @"选中扇形菜单中的应用并停留达到等待时间后松手，即以悬浮窗打开；未达到时间松手则全屏打开。关闭总开关会关闭已打开的悬浮窗口并退出宿主，以减少内存占用。\n\n键盘显示为“小窗内”时，键盘随应用画面一起缩小显示在悬浮窗中；为“全屏”时，iOS 17.4 及以上让系统键盘按设备屏幕布局显示且悬浮窗保持小窗，旧版系统会临时铺满悬浮窗以按原尺寸显示键盘。全屏键盘需要安装键盘桥接插件。";
         case ArcLaunchConfigurationSectionShortcuts:
-            return @"在“调整顺序”中以扇形预览长按拖动图标即可排序，靠前的应用位于靠近悬浮条的内圈。左滑应用可删除。\n\n使用扇形菜单时，选中应用并等待设定时间，图标右下角出现窗口标识后松手，即以悬浮窗打开；悬浮窗可拖动标题栏移动、拖右下角缩放，也可收进边栏。最多同时悬浮 3 个应用。";
+            return @"在“调整顺序”中以扇形预览长按拖动图标即可排序，靠前的快捷项位于靠近悬浮条的内圈。左滑快捷项可删除。手电筒由 ArcLaunch 直接控制，无需安装额外插件。\n\n应用可在选中后等待设定时间，以悬浮窗打开；手电筒会立即切换。最多同时悬浮 3 个应用。";
         case ArcLaunchConfigurationSectionSupport:
             return @"ArcLaunch 只应通过 TrollStore 安装。私有能力不可用时，配置仍会保留。";
         case ArcLaunchConfigurationSectionUpdate:
@@ -522,12 +523,21 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
     NSArray<ArcLaunchShortcut *> *shortcuts = self.settingsStore.settings.shortcuts;
     if (row < ArcLaunchShortcutActionRowCount) {
         UITableViewCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"ActionCell"] ?: [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"ActionCell"];
-        BOOL addRow = row == ArcLaunchShortcutActionRowAdd;
-        // 至少两个应用时才有顺序可调。
-        BOOL enabled = addRow || shortcuts.count > 1;
-        cell.textLabel.text = addRow ? @"添加应用" : @"调整顺序";
+        BOOL addApplication = row == ArcLaunchShortcutActionRowAddApplication;
+        BOOL addFlashlight = row == ArcLaunchShortcutActionRowAddFlashlight;
+        BOOL hasFlashlight = NO;
+        for (ArcLaunchShortcut *shortcut in shortcuts) {
+            if ([shortcut.systemActionIdentifier isEqualToString:ArcLaunchSystemActionFlashlight]) {
+                hasFlashlight = YES;
+                break;
+            }
+        }
+        BOOL enabled = addApplication ? shortcuts.count < ArcLaunchMaximumShortcuts :
+            (addFlashlight ? shortcuts.count < ArcLaunchMaximumShortcuts && !hasFlashlight : shortcuts.count > 1);
+        cell.textLabel.text = addApplication ? @"添加应用" : (addFlashlight ? @"添加手电筒" : @"调整顺序");
         cell.textLabel.textColor = enabled ? self.view.tintColor : UIColor.tertiaryLabelColor;
-        cell.imageView.image = [UIImage systemImageNamed:addRow ? @"plus.circle.fill" : @"circle.grid.cross.fill"];
+        NSString *symbolName = addApplication ? @"plus.circle.fill" : (addFlashlight ? @"flashlight.on.fill" : @"circle.grid.cross.fill");
+        cell.imageView.image = [UIImage systemImageNamed:symbolName];
         cell.imageView.tintColor = enabled ? self.view.tintColor : UIColor.tertiaryLabelColor;
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
         cell.selectionStyle = enabled ? UITableViewCellSelectionStyleDefault : UITableViewCellSelectionStyleNone;
@@ -538,8 +548,14 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
     cell.accessoryView = nil;
     cell.accessoryType = UITableViewCellAccessoryNone;
     cell.textLabel.text = shortcut.displayName;
-    cell.detailTextLabel.text = shortcut.bundleIdentifier;
-    cell.imageView.image = [self listIconForBundleIdentifier:shortcut.bundleIdentifier];
+    cell.detailTextLabel.text = shortcut.isSystemAction ? @"控制中心功能" : shortcut.bundleIdentifier;
+    if (shortcut.isSystemAction) {
+        cell.imageView.image = [UIImage systemImageNamed:shortcut.systemActionSymbolName ?: @"app.fill"];
+        cell.imageView.tintColor = self.view.tintColor;
+    } else {
+        cell.imageView.tintColor = nil;
+        cell.imageView.image = [self listIconForBundleIdentifier:shortcut.bundleIdentifier];
+    }
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
     return cell;
 }
@@ -689,8 +705,10 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
         [tableView endUpdates];
         UITableViewCell *fineTuningCell = [tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:2 inSection:ArcLaunchConfigurationSectionTrigger]];
         fineTuningCell.detailTextLabel.text = expanding ? @"收起" : @"展开";
-    } else if (indexPath.section == ArcLaunchConfigurationSectionShortcuts && indexPath.row == ArcLaunchShortcutActionRowAdd) {
+    } else if (indexPath.section == ArcLaunchConfigurationSectionShortcuts && indexPath.row == ArcLaunchShortcutActionRowAddApplication) {
         [self showApplicationPicker];
+    } else if (indexPath.section == ArcLaunchConfigurationSectionShortcuts && indexPath.row == ArcLaunchShortcutActionRowAddFlashlight) {
+        [self addFlashlightShortcut];
     } else if (indexPath.section == ArcLaunchConfigurationSectionShortcuts && indexPath.row == ArcLaunchShortcutActionRowArrange) {
         if (self.settingsStore.settings.shortcuts.count > 1) {
             ShortcutArrangementViewController *arrangement = [[ShortcutArrangementViewController alloc] initWithSettingsStore:self.settingsStore applicationBridge:self.applicationBridge];
@@ -704,7 +722,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
 - (void)showApplicationPicker {
     NSArray<ArcLaunchShortcut *> *existingShortcuts = self.settingsStore.settings.shortcuts;
     if (existingShortcuts.count >= ArcLaunchMaximumShortcuts) {
-        [self showAlertWithTitle:@"已达上限" message:[NSString stringWithFormat:@"扇形菜单最多配置 %lu 个应用。", (unsigned long)ArcLaunchMaximumShortcuts]];
+        [self showAlertWithTitle:@"已达上限" message:[NSString stringWithFormat:@"扇形菜单最多配置 %lu 个快捷项。", (unsigned long)ArcLaunchMaximumShortcuts]];
         return;
     }
     AppPickerViewController *picker = [[AppPickerViewController alloc] initWithApplicationBridge:self.applicationBridge existingBundleIdentifiers:[existingShortcuts valueForKey:@"bundleIdentifier"] remainingCapacity:ArcLaunchMaximumShortcuts - existingShortcuts.count];
@@ -713,6 +731,27 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
         return [weakSelf.settingsStore addShortcut:shortcut];
     };
     [self.navigationController pushViewController:picker animated:YES];
+}
+
+- (void)addFlashlightShortcut {
+    NSArray<ArcLaunchShortcut *> *existingShortcuts = self.settingsStore.settings.shortcuts;
+    if (existingShortcuts.count >= ArcLaunchMaximumShortcuts) {
+        [self showAlertWithTitle:@"已达上限" message:[NSString stringWithFormat:@"扇形菜单最多配置 %lu 个快捷项。", (unsigned long)ArcLaunchMaximumShortcuts]];
+        return;
+    }
+    for (ArcLaunchShortcut *shortcut in existingShortcuts) {
+        if ([shortcut.systemActionIdentifier isEqualToString:ArcLaunchSystemActionFlashlight]) {
+            [self showAlertWithTitle:@"已添加" message:@"手电筒快捷操作已在列表中。"];
+            return;
+        }
+    }
+
+    ArcLaunchShortcut *shortcut = [[ArcLaunchShortcut alloc] initWithSystemActionIdentifier:ArcLaunchSystemActionFlashlight displayName:@"手电筒"];
+    if (![self.settingsStore addShortcut:shortcut]) {
+        [self showAlertWithTitle:@"无法添加" message:@"快捷项已达上限。"];
+        return;
+    }
+    [self.tableView reloadData];
 }
 
 // 左滑删除；排序改在扇形编辑器里完成。

@@ -6,6 +6,7 @@
 #import "ArcLaunchSettingsStore.h"
 #import "HUDTouchEventBridge.h"
 #import "SystemApplicationBridge.h"
+#import <AVFoundation/AVFoundation.h>
 #import <math.h>
 #import <notify.h>
 
@@ -104,6 +105,8 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 @property (nonatomic) CGFloat dragCenterY;
 - (void)cancelFloatingModeTimer;
 - (void)startFloatingModeTimerForItemView:(UIView *)itemView;
+- (void)toggleFlashlight;
+- (void)toggleFlashlightWithAuthorization;
 - (UIView *)floatingBadgeViewForItemSize:(CGFloat)itemSize;
 - (CGRect)menuSafeBounds;
 @end
@@ -398,6 +401,9 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
     // 图标在设置变化时预先加载，避免滑出菜单时卡顿。
     NSMutableDictionary<NSString *, UIImage *> *icons = [NSMutableDictionary dictionary];
     for (ArcLaunchShortcut *shortcut in self.settingsStore.settings.shortcuts) {
+        if (shortcut.isSystemAction) {
+            continue;
+        }
         NSString *key = shortcut.bundleIdentifier.lowercaseString;
         UIImage *icon = self.iconsByBundleIdentifier[key] ?: [self.applicationBridge iconForBundleIdentifier:shortcut.bundleIdentifier];
         if (icon) {
@@ -857,8 +863,13 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
         UIImageView *iconView = [[UIImageView alloc] initWithFrame:itemView.bounds];
         iconView.layer.cornerRadius = size / 2.0;
         iconView.clipsToBounds = YES;
-        UIImage *icon = self.iconsByBundleIdentifier[shortcut.bundleIdentifier.lowercaseString];
-        if (icon) {
+        UIImage *icon = shortcut.isSystemAction ? [UIImage systemImageNamed:shortcut.systemActionSymbolName ?: @"app.fill"] : self.iconsByBundleIdentifier[shortcut.bundleIdentifier.lowercaseString];
+        if (shortcut.isSystemAction) {
+            iconView.image = icon;
+            iconView.tintColor = UIColor.whiteColor;
+            iconView.backgroundColor = [UIColor colorWithWhite:0.18 alpha:0.95];
+            iconView.contentMode = UIViewContentModeCenter;
+        } else if (icon) {
             iconView.image = icon;
             iconView.contentMode = UIViewContentModeScaleAspectFill;
         } else {
@@ -933,7 +944,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 
     NSUInteger index = [self.menuItemViews indexOfObjectIdenticalTo:itemView];
     ArcLaunchShortcut *shortcut = index < self.menuShortcuts.count ? self.menuShortcuts[index] : nil;
-    UIImage *icon = self.iconsByBundleIdentifier[shortcut.bundleIdentifier.lowercaseString];
+    UIImage *icon = shortcut.isSystemAction ? [UIImage systemImageNamed:shortcut.systemActionSymbolName ?: @"app.fill"] : self.iconsByBundleIdentifier[shortcut.bundleIdentifier.lowercaseString];
     self.previewImageView.image = icon ?: [UIImage systemImageNamed:@"app.fill"];
     self.previewImageView.tintColor = UIColor.whiteColor;
     self.previewNameLabel.text = shortcut.displayName;
@@ -965,7 +976,9 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
         self.previewImageView.transform = CGAffineTransformIdentity;
         self.previewNameLabel.alpha = 1.0;
     } completion:nil];
-    [self startFloatingModeTimerForItemView:itemView];
+    if (!shortcut.isSystemAction) {
+        [self startFloatingModeTimerForItemView:itemView];
+    }
 }
 
 - (void)cancelFloatingModeTimer {
@@ -1004,7 +1017,59 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
     [NSRunLoop.mainRunLoop addTimer:scheduledTimer forMode:NSRunLoopCommonModes];
 }
 
+- (void)toggleFlashlight {
+    AVAuthorizationStatus authorizationStatus = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
+    if (authorizationStatus == AVAuthorizationStatusNotDetermined) {
+        __weak typeof(self) weakSelf = self;
+        [AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo completionHandler:^(BOOL granted) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                FloatingHUDViewController *strongSelf = weakSelf;
+                if (!strongSelf) {
+                    return;
+                }
+                if (!granted) {
+                    [strongSelf showFeedback:@"需要相机权限才能使用手电筒"];
+                    return;
+                }
+                [strongSelf toggleFlashlightWithAuthorization];
+            });
+        }];
+        return;
+    }
+    if (authorizationStatus != AVAuthorizationStatusAuthorized) {
+        [self showFeedback:@"需要相机权限才能使用手电筒"];
+        return;
+    }
+    [self toggleFlashlightWithAuthorization];
+}
+
+- (void)toggleFlashlightWithAuthorization {
+    AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+    if (!device || ![device hasTorch] || ![device isTorchAvailable]) {
+        [self showFeedback:@"当前设备没有可用的手电筒"];
+        return;
+    }
+
+    NSError *error = nil;
+    if (![device lockForConfiguration:&error]) {
+        [self showFeedback:@"手电筒暂不可用"];
+        return;
+    }
+    if ([device torchMode] == AVCaptureTorchModeOn) {
+        [device setTorchMode:AVCaptureTorchModeOff];
+    } else if (![device setTorchModeOnWithLevel:1.0 error:&error]) {
+        [device unlockForConfiguration];
+        [self showFeedback:@"无法开启手电筒"];
+        return;
+    }
+    [device unlockForConfiguration];
+}
+
 - (void)launchShortcut:(ArcLaunchShortcut *)shortcut inFloatingWindow:(BOOL)inFloatingWindow {
+    if (shortcut.isSystemAction) {
+        [self toggleFlashlight];
+        return;
+    }
     if (inFloatingWindow) {
         if (self.settingsStore.settings.floatingSplitEnabled && self.floatingWindowManager) {
             UIImage *icon = self.iconsByBundleIdentifier[shortcut.bundleIdentifier.lowercaseString];

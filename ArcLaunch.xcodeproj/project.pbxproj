@@ -28,6 +28,7 @@
 		A00000000000000000000221 /* FloatingAppWindowView.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000196 /* FloatingAppWindowView.m */; };
 		A00000000000000000000230 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A00000000000000000000180 /* UIKit.framework */; };
 		A00000000000000000000231 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A00000000000000000000181 /* Foundation.framework */; };
+		A00000000000000000000232 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A00000000000000000000183 /* AVFoundation.framework */; };
 		A00000000000000000000240 /* ArcLaunchSettingsStoreTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000160 /* ArcLaunchSettingsStoreTests.m */; };
 		A00000000000000000000241 /* ArcLaunchFanLayoutTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000161 /* ArcLaunchFanLayoutTests.m */; };
 		A00000000000000000000242 /* SystemApplicationBridgeTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000162 /* SystemApplicationBridgeTests.m */; };
@@ -91,6 +92,7 @@
 		A00000000000000000000180 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		A00000000000000000000181 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		A00000000000000000000182 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
+		A00000000000000000000183 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		A00000000000000000000190 /* ArcLaunchUpdateChecker.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArcLaunchUpdateChecker.h; sourceTree = "<group>"; };
 		A00000000000000000000191 /* ArcLaunchUpdateChecker.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArcLaunchUpdateChecker.m; sourceTree = "<group>"; };
 		A00000000000000000000192 /* ArcLaunchUpdateCheckerTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArcLaunchUpdateCheckerTests.m; sourceTree = "<group>"; };
@@ -109,6 +111,7 @@
 			files = (
 				A00000000000000000000230 /* UIKit.framework in Frameworks */,
 				A00000000000000000000231 /* Foundation.framework in Frameworks */,
+				A00000000000000000000232 /* AVFoundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -233,6 +236,7 @@
 				A00000000000000000000180 /* UIKit.framework */,
 				A00000000000000000000181 /* Foundation.framework */,
 				A00000000000000000000182 /* XCTest.framework */,
+				A00000000000000000000183 /* AVFoundation.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";

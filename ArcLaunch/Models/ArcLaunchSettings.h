@@ -4,6 +4,8 @@
 NS_ASSUME_NONNULL_BEGIN
 
 FOUNDATION_EXPORT const NSUInteger ArcLaunchMaximumShortcuts;
+#define ArcLaunchSystemActionFlashlight @"flashlight"
+#define ArcLaunchSystemShortcutBundleIdentifierPrefix @"com.kleinersource.arclaunch.system."
 FOUNDATION_EXPORT const CGFloat ArcLaunchMinimumIconSize;
 FOUNDATION_EXPORT const CGFloat ArcLaunchMaximumIconSize;
 FOUNDATION_EXPORT const CGFloat ArcLaunchDefaultIconSize;
@@ -78,8 +80,12 @@ typedef NS_ENUM(NSInteger, ArcLaunchKeyboardDisplayMode) {
 @property (nonatomic, copy, readonly) NSUUID *identifier;
 @property (nonatomic, copy) NSString *bundleIdentifier;
 @property (nonatomic, copy) NSString *displayName;
+@property (nonatomic, copy, readonly, nullable) NSString *systemActionIdentifier;
+@property (nonatomic, readonly) BOOL isSystemAction;
+@property (nonatomic, copy, readonly, nullable) NSString *systemActionSymbolName;
 
 - (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier displayName:(NSString *)displayName;
+- (nullable instancetype)initWithSystemActionIdentifier:(NSString *)systemActionIdentifier displayName:(NSString *)displayName;
 - (NSDictionary<NSString *, id> *)dictionaryRepresentation;
 + (nullable instancetype)shortcutFromDictionary:(NSDictionary<NSString *, id> *)dictionary;
 
