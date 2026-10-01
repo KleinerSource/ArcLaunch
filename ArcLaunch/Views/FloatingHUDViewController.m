@@ -16,11 +16,21 @@
 static const CGFloat ArcLaunchHandleActiveBarWidth = 6.0;
 static const CGFloat ArcLaunchDragActivationDistance = 8.0;
 static const CGFloat ArcLaunchPreviewIconSize = 108.0;
+static const NSInteger ArcLaunchMenuItemIconViewTag = 1101;
 // 悬浮窗口模式标识相对当前图标的尺寸。
 static const CGFloat ArcLaunchFloatingBadgeRatio = 0.38;
 // 配置变化后扇形菜单与触摸范围的预览停留时间。
 static const NSTimeInterval ArcLaunchMenuPreviewDuration = 1.6;
 static const char * const ArcLaunchLockStateNotification = "com.apple.springboard.lockstate";
+
+static Class ArcLaunchFlashlightRuntimeClass(void) {
+    Class flashlightClass = NSClassFromString(@"AVFlashlight");
+    if (!flashlightClass) {
+        dlopen("/System/Library/PrivateFrameworks/AVFCapture.framework/AVFCapture", RTLD_LAZY | RTLD_LOCAL);
+        flashlightClass = NSClassFromString(@"AVFlashlight");
+    }
+    return flashlightClass;
+}
 
 typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
     ArcLaunchResolvedAppearanceLight,
@@ -86,6 +96,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 @property (nonatomic, strong) UIImpactFeedbackGenerator *hoverFeedbackGenerator;
 @property (nonatomic, strong) dispatch_queue_t flashlightSessionQueue;
 @property (nonatomic, strong, nullable) id flashlightController;
+@property (nonatomic) BOOL flashlightOn;
 @property (nonatomic) BOOL menuVisible;
 @property (nonatomic) BOOL previewingMenu;
 @property (nonatomic, strong, nullable) NSTimer *floatingModeTimer;
@@ -110,6 +121,9 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 - (void)cancelFloatingModeTimer;
 - (void)startFloatingModeTimerForItemView:(UIView *)itemView;
 - (void)toggleFlashlight;
+- (UIImage *)iconImageForShortcut:(ArcLaunchShortcut *)shortcut;
+- (void)refreshFlashlightState;
+- (void)updateFlashlightMenuIcons;
 - (UIView *)floatingBadgeViewForItemSize:(CGFloat)itemSize;
 - (CGRect)menuSafeBounds;
 @end
@@ -695,6 +709,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
     self.menuHoverRadius = (settings.iconSize + MIN(settings.iconSpacing, settings.ringSpacing)) * scale / 2.0 + 2.0;
     [self updateHoveredItemView:nil];
     [self rebuildMenuItemsForShortcuts:[shortcuts subarrayWithRange:NSMakeRange(0, centers.count)]];
+    [self refreshFlashlightState];
     self.menuVisible = YES;
 
     if (backdrop) {
@@ -867,11 +882,13 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
         UIImageView *iconView = [[UIImageView alloc] initWithFrame:itemView.bounds];
         iconView.layer.cornerRadius = size / 2.0;
         iconView.clipsToBounds = YES;
-        UIImage *icon = shortcut.isSystemAction ? [UIImage systemImageNamed:shortcut.systemActionSymbolName ?: @"app.fill"] : self.iconsByBundleIdentifier[shortcut.bundleIdentifier.lowercaseString];
+        UIImage *icon = [self iconImageForShortcut:shortcut] ?: self.iconsByBundleIdentifier[shortcut.bundleIdentifier.lowercaseString];
         if (shortcut.isSystemAction) {
+            iconView.tag = ArcLaunchMenuItemIconViewTag;
             iconView.image = icon;
-            iconView.tintColor = UIColor.whiteColor;
-            iconView.backgroundColor = [UIColor colorWithWhite:0.18 alpha:0.95];
+            BOOL flashlightOn = [shortcut.systemActionIdentifier isEqualToString:ArcLaunchSystemActionFlashlight] && self.flashlightOn;
+            iconView.tintColor = flashlightOn ? UIColor.blackColor : UIColor.whiteColor;
+            iconView.backgroundColor = flashlightOn ? UIColor.systemYellowColor : [UIColor colorWithWhite:0.18 alpha:0.95];
             iconView.contentMode = UIViewContentModeCenter;
         } else if (icon) {
             iconView.image = icon;
@@ -888,6 +905,73 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
         itemView.accessibilityLabel = shortcut.displayName;
         [self.view insertSubview:itemView belowSubview:self.previewImageView];
         [self.menuItemViews addObject:itemView];
+    }
+}
+
+- (UIImage *)iconImageForShortcut:(ArcLaunchShortcut *)shortcut {
+    if (!shortcut.isSystemAction) {
+        return nil;
+    }
+    NSString *symbolName = shortcut.systemActionSymbolName ?: @"app.fill";
+    if ([shortcut.systemActionIdentifier isEqualToString:ArcLaunchSystemActionFlashlight]) {
+        symbolName = self.flashlightOn ? @"flashlight.on.fill" : @"flashlight.off.fill";
+    }
+    return [UIImage systemImageNamed:symbolName];
+}
+
+- (void)refreshFlashlightState {
+    BOOL containsFlashlight = NO;
+    for (ArcLaunchShortcut *shortcut in self.menuShortcuts) {
+        if ([shortcut.systemActionIdentifier isEqualToString:ArcLaunchSystemActionFlashlight]) {
+            containsFlashlight = YES;
+            break;
+        }
+    }
+    if (!containsFlashlight) {
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(self.flashlightSessionQueue, ^{
+        FloatingHUDViewController *strongSelf = weakSelf;
+        if (!strongSelf) {
+            return;
+        }
+
+        Class flashlightClass = ArcLaunchFlashlightRuntimeClass();
+        SEL levelSelector = NSSelectorFromString(@"flashlightLevel");
+        if (!flashlightClass || ![flashlightClass instancesRespondToSelector:levelSelector]) {
+            return;
+        }
+        id flashlight = strongSelf.flashlightController;
+        if (!flashlight) {
+            flashlight = [[flashlightClass alloc] init];
+            strongSelf.flashlightController = flashlight;
+        }
+        BOOL isOn = ((float (*)(id, SEL))objc_msgSend)(flashlight, levelSelector) > 0.0f;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            strongSelf.flashlightOn = isOn;
+            [strongSelf updateFlashlightMenuIcons];
+        });
+    });
+}
+
+- (void)updateFlashlightMenuIcons {
+    for (NSUInteger index = 0; index < self.menuShortcuts.count && index < self.menuItemViews.count; index++) {
+        ArcLaunchShortcut *shortcut = self.menuShortcuts[index];
+        if (![shortcut.systemActionIdentifier isEqualToString:ArcLaunchSystemActionFlashlight]) {
+            continue;
+        }
+
+        UIView *itemView = self.menuItemViews[index];
+        UIImageView *iconView = (UIImageView *)[itemView viewWithTag:ArcLaunchMenuItemIconViewTag];
+        iconView.image = [self iconImageForShortcut:shortcut];
+        iconView.tintColor = self.flashlightOn ? UIColor.blackColor : UIColor.whiteColor;
+        iconView.backgroundColor = self.flashlightOn ? UIColor.systemYellowColor : [UIColor colorWithWhite:0.18 alpha:0.95];
+        if (itemView == self.hoveredItemView) {
+            self.previewImageView.image = iconView.image;
+            self.previewImageView.tintColor = self.flashlightOn ? UIColor.systemYellowColor : UIColor.whiteColor;
+        }
     }
 }
 
@@ -948,9 +1032,10 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 
     NSUInteger index = [self.menuItemViews indexOfObjectIdenticalTo:itemView];
     ArcLaunchShortcut *shortcut = index < self.menuShortcuts.count ? self.menuShortcuts[index] : nil;
-    UIImage *icon = shortcut.isSystemAction ? [UIImage systemImageNamed:shortcut.systemActionSymbolName ?: @"app.fill"] : self.iconsByBundleIdentifier[shortcut.bundleIdentifier.lowercaseString];
+    UIImage *icon = shortcut.isSystemAction ? [self iconImageForShortcut:shortcut] : self.iconsByBundleIdentifier[shortcut.bundleIdentifier.lowercaseString];
     self.previewImageView.image = icon ?: [UIImage systemImageNamed:@"app.fill"];
-    self.previewImageView.tintColor = UIColor.whiteColor;
+    BOOL flashlightOn = [shortcut.systemActionIdentifier isEqualToString:ArcLaunchSystemActionFlashlight] && self.flashlightOn;
+    self.previewImageView.tintColor = flashlightOn ? UIColor.systemYellowColor : UIColor.whiteColor;
     self.previewNameLabel.text = shortcut.displayName;
 
     // 预览放在屏幕中央，与扇形菜单重叠时移到扇形另一侧的空白区域。
@@ -1029,11 +1114,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
             return;
         }
 
-        Class flashlightClass = NSClassFromString(@"AVFlashlight");
-        if (!flashlightClass) {
-            dlopen("/System/Library/PrivateFrameworks/AVFCapture.framework/AVFCapture", RTLD_LAZY | RTLD_LOCAL);
-            flashlightClass = NSClassFromString(@"AVFlashlight");
-        }
+        Class flashlightClass = ArcLaunchFlashlightRuntimeClass();
 
         SEL hasFlashlightSelector = NSSelectorFromString(@"hasFlashlight");
         SEL availableSelector = NSSelectorFromString(@"isAvailable");
@@ -1084,6 +1165,8 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
         }
 
         dispatch_async(dispatch_get_main_queue(), ^{
+            strongSelf.flashlightOn = isTurningOn;
+            [strongSelf updateFlashlightMenuIcons];
             [strongSelf showFeedback:isTurningOn ? @"手电筒已开启" : @"手电筒已关闭"];
         });
     });
