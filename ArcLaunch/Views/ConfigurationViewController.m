@@ -182,7 +182,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
         case ArcLaunchConfigurationSectionFloatingSplit:
             return @"选中扇形菜单中的应用并停留达到等待时间后松手，即以悬浮窗打开；未达到时间松手则全屏打开。关闭总开关会关闭已打开的悬浮窗口并退出宿主，以减少内存占用。\n\n键盘显示为“小窗内”时，键盘随应用画面一起缩小显示在悬浮窗中；为“全屏”时，iOS 17.4 及以上让系统键盘按设备屏幕布局显示且悬浮窗保持小窗，旧版系统会临时铺满悬浮窗以按原尺寸显示键盘。全屏键盘需要安装键盘桥接插件。";
         case ArcLaunchConfigurationSectionShortcuts:
-            return @"在“调整顺序”中以扇形预览长按拖动图标即可排序，靠前的快捷项位于靠近悬浮条的内圈。左滑快捷项可删除。手电筒需要相机权限来启动设备，不会拍摄或保存画面。\n\n应用可在选中后等待设定时间，以悬浮窗打开；手电筒会立即切换。最多同时悬浮 3 个应用。";
+            return @"在“调整顺序”中以扇形预览长按拖动图标即可排序，靠前的快捷项位于靠近悬浮条的内圈。左滑快捷项可删除。手电筒由系统闪光灯接口控制，不会拍摄或保存画面。\n\n应用可在选中后等待设定时间，以悬浮窗打开；手电筒会立即切换。最多同时悬浮 3 个应用。";
         case ArcLaunchConfigurationSectionSupport:
             return @"ArcLaunch 只应通过 TrollStore 安装。私有能力不可用时，配置仍会保留。";
         case ArcLaunchConfigurationSectionUpdate:

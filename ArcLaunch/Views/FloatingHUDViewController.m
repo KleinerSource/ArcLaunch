@@ -7,8 +7,10 @@
 #import "HUDTouchEventBridge.h"
 #import "SystemApplicationBridge.h"
 #import <AVFoundation/AVFoundation.h>
+#import <dlfcn.h>
 #import <math.h>
 #import <notify.h>
+#import <objc/message.h>
 
 // 悬浮条的边距、宽高与可移动范围定义在 ArcLaunchFanLayout 中，与设置页的排序编辑器共用。
 static const CGFloat ArcLaunchHandleActiveBarWidth = 6.0;
@@ -83,8 +85,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 @property (nonatomic, strong) UILabel *feedbackLabel;
 @property (nonatomic, strong) UIImpactFeedbackGenerator *hoverFeedbackGenerator;
 @property (nonatomic, strong) dispatch_queue_t flashlightSessionQueue;
-@property (nonatomic, strong, nullable) AVCaptureSession *flashlightSession;
-@property (nonatomic, strong, nullable) AVCaptureDevice *flashlightDevice;
+@property (nonatomic, strong, nullable) id flashlightController;
 @property (nonatomic) BOOL menuVisible;
 @property (nonatomic) BOOL previewingMenu;
 @property (nonatomic, strong, nullable) NSTimer *floatingModeTimer;
@@ -109,7 +110,6 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 - (void)cancelFloatingModeTimer;
 - (void)startFloatingModeTimerForItemView:(UIView *)itemView;
 - (void)toggleFlashlight;
-- (void)toggleFlashlightWithAuthorization;
 - (UIView *)floatingBadgeViewForItemSize:(CGFloat)itemSize;
 - (CGRect)menuSafeBounds;
 @end
@@ -1022,32 +1022,6 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 }
 
 - (void)toggleFlashlight {
-    AVAuthorizationStatus status = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
-    if (status == AVAuthorizationStatusNotDetermined) {
-        __weak typeof(self) weakSelf = self;
-        [AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo completionHandler:^(BOOL granted) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                FloatingHUDViewController *strongSelf = weakSelf;
-                if (!strongSelf) {
-                    return;
-                }
-                if (!granted) {
-                    [strongSelf showFeedback:@"需要相机权限才能使用手电筒"];
-                    return;
-                }
-                [strongSelf toggleFlashlightWithAuthorization];
-            });
-        }];
-        return;
-    }
-    if (status != AVAuthorizationStatusAuthorized) {
-        [self showFeedback:@"请在设置中允许 ArcLaunch 使用相机权限"];
-        return;
-    }
-    [self toggleFlashlightWithAuthorization];
-}
-
-- (void)toggleFlashlightWithAuthorization {
     __weak typeof(self) weakSelf = self;
     dispatch_async(self.flashlightSessionQueue, ^{
         FloatingHUDViewController *strongSelf = weakSelf;
@@ -1055,94 +1029,62 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
             return;
         }
 
+        Class flashlightClass = NSClassFromString(@"AVFlashlight");
+        if (!flashlightClass) {
+            dlopen("/System/Library/PrivateFrameworks/AVFCapture.framework/AVFCapture", RTLD_LAZY | RTLD_LOCAL);
+            flashlightClass = NSClassFromString(@"AVFlashlight");
+        }
+
+        SEL hasFlashlightSelector = NSSelectorFromString(@"hasFlashlight");
+        SEL availableSelector = NSSelectorFromString(@"isAvailable");
+        SEL overheatedSelector = NSSelectorFromString(@"isOverheated");
+        SEL levelSelector = NSSelectorFromString(@"flashlightLevel");
+        SEL setLevelSelector = NSSelectorFromString(@"setFlashlightLevel:withError:");
+        if (!flashlightClass || ![flashlightClass respondsToSelector:hasFlashlightSelector] || ![flashlightClass instancesRespondToSelector:availableSelector] || ![flashlightClass instancesRespondToSelector:overheatedSelector] || ![flashlightClass instancesRespondToSelector:levelSelector] || ![flashlightClass instancesRespondToSelector:setLevelSelector]) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [strongSelf showFeedback:@"当前系统不支持手电筒控制"];
+            });
+            return;
+        }
+
+        BOOL hasFlashlight = ((BOOL (*)(id, SEL))objc_msgSend)(flashlightClass, hasFlashlightSelector);
+        if (!hasFlashlight) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [strongSelf showFeedback:@"当前设备没有可用的手电筒"];
+            });
+            return;
+        }
+
+        id flashlight = strongSelf.flashlightController;
+        if (!flashlight) {
+            flashlight = [[flashlightClass alloc] init];
+            strongSelf.flashlightController = flashlight;
+        }
+        BOOL isAvailable = ((BOOL (*)(id, SEL))objc_msgSend)(flashlight, availableSelector);
+        BOOL isOverheated = ((BOOL (*)(id, SEL))objc_msgSend)(flashlight, overheatedSelector);
+        if (!isAvailable || isOverheated) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [strongSelf showFeedback:isOverheated ? @"闪光灯温度过高，请稍后再试" : @"手电筒暂不可用"];
+            });
+            return;
+        }
+
+        float currentLevel = ((float (*)(id, SEL))objc_msgSend)(flashlight, levelSelector);
+        BOOL isTurningOn = currentLevel <= 0.0f;
+        float targetLevel = isTurningOn ? 1.0f : 0.0f;
         NSError *error = nil;
-        AVCaptureSession *session = strongSelf.flashlightSession;
-        AVCaptureDevice *device = strongSelf.flashlightDevice;
-        BOOL isTurningOff = session.isRunning && device.torchMode == AVCaptureTorchModeOn;
-        if (!session || !device) {
-            device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
-            if (!device || !device.hasTorch) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    [strongSelf showFeedback:@"当前设备没有可用的手电筒"];
-                });
-                return;
-            }
-
-            AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
-            if (!input) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    [strongSelf showFeedback:@"无法启动手电筒设备"];
-                });
-                return;
-            }
-
-            session = [AVCaptureSession new];
-            AVCapturePhotoOutput *photoOutput = [AVCapturePhotoOutput new];
-            [session beginConfiguration];
-            if ([session canSetSessionPreset:AVCaptureSessionPresetPhoto]) {
-                session.sessionPreset = AVCaptureSessionPresetPhoto;
-            }
-            if (![session canAddInput:input] || ![session canAddOutput:photoOutput]) {
-                [session commitConfiguration];
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    [strongSelf showFeedback:@"无法启动手电筒设备"];
-                });
-                return;
-            }
-            [session addInput:input];
-            [session addOutput:photoOutput];
-            [session commitConfiguration];
-            [session startRunning];
-            if (!session.isRunning) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    [strongSelf showFeedback:@"相机设备无法启动，手电筒不可用"];
-                });
-                return;
-            }
-        } else if (!session.isRunning) {
-            [session startRunning];
-        }
-
-        if (![device lockForConfiguration:&error]) {
-            if (!strongSelf.flashlightSession) {
-                [session stopRunning];
-            }
+        BOOL changed = ((BOOL (*)(id, SEL, float, NSError **))objc_msgSend)(flashlight, setLevelSelector, targetLevel, &error);
+        float actualLevel = ((float (*)(id, SEL))objc_msgSend)(flashlight, levelSelector);
+        if (!changed || (isTurningOn ? actualLevel <= 0.0f : actualLevel > 0.0f)) {
+            NSString *message = error.localizedDescription.length > 0 ? [NSString stringWithFormat:@"手电筒切换失败：%@", error.localizedDescription] : @"手电筒切换失败，请重试";
             dispatch_async(dispatch_get_main_queue(), ^{
-                [strongSelf showFeedback:@"手电筒暂不可用"];
+                [strongSelf showFeedback:message];
             });
             return;
         }
 
-        BOOL changed = YES;
-        if (isTurningOff) {
-            device.torchMode = AVCaptureTorchModeOff;
-            changed = device.torchMode == AVCaptureTorchModeOff;
-        } else {
-            changed = [device setTorchModeOnWithLevel:1.0 error:&error];
-            changed = changed && session.isRunning && device.torchMode == AVCaptureTorchModeOn;
-        }
-        [device unlockForConfiguration];
-
-        if (!changed) {
-            [session stopRunning];
-            strongSelf.flashlightSession = nil;
-            strongSelf.flashlightDevice = nil;
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [strongSelf showFeedback:isTurningOff ? @"无法关闭手电筒，请重试" : @"无法开启手电筒，请确认闪光灯没有被其他应用占用"];
-            });
-            return;
-        }
-
-        if (isTurningOff) {
-            [session stopRunning];
-            strongSelf.flashlightSession = nil;
-            strongSelf.flashlightDevice = nil;
-        } else {
-            strongSelf.flashlightSession = session;
-            strongSelf.flashlightDevice = device;
-        }
         dispatch_async(dispatch_get_main_queue(), ^{
-            [strongSelf showFeedback:isTurningOff ? @"手电筒已关闭" : @"手电筒已开启"];
+            [strongSelf showFeedback:isTurningOn ? @"手电筒已开启" : @"手电筒已关闭"];
         });
     });
 }
