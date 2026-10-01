@@ -82,6 +82,9 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 @property (nonatomic, strong) UILabel *previewNameLabel;
 @property (nonatomic, strong) UILabel *feedbackLabel;
 @property (nonatomic, strong) UIImpactFeedbackGenerator *hoverFeedbackGenerator;
+@property (nonatomic, strong) dispatch_queue_t flashlightSessionQueue;
+@property (nonatomic, strong, nullable) AVCaptureSession *flashlightSession;
+@property (nonatomic, strong, nullable) AVCaptureDevice *flashlightDevice;
 @property (nonatomic) BOOL menuVisible;
 @property (nonatomic) BOOL previewingMenu;
 @property (nonatomic, strong, nullable) NSTimer *floatingModeTimer;
@@ -106,6 +109,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 - (void)cancelFloatingModeTimer;
 - (void)startFloatingModeTimerForItemView:(UIView *)itemView;
 - (void)toggleFlashlight;
+- (void)toggleFlashlightWithAuthorization;
 - (UIView *)floatingBadgeViewForItemSize:(CGFloat)itemSize;
 - (CGRect)menuSafeBounds;
 @end
@@ -125,6 +129,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
         _appliedMenuLayoutSignature = @"";
         _appliedBackdropSignature = @"";
         _appliedTriggerSignature = @"";
+        _flashlightSessionQueue = dispatch_queue_create("com.kleinersource.arclaunch.flashlight", DISPATCH_QUEUE_SERIAL);
         _lockStateToken = NOTIFY_TOKEN_INVALID;
     }
     return self;
@@ -1017,27 +1022,129 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 }
 
 - (void)toggleFlashlight {
-    AVCaptureDevice *device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
-    if (!device || ![device hasTorch]) {
-        [self showFeedback:@"当前设备没有可用的手电筒"];
+    AVAuthorizationStatus status = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
+    if (status == AVAuthorizationStatusNotDetermined) {
+        __weak typeof(self) weakSelf = self;
+        [AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo completionHandler:^(BOOL granted) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                FloatingHUDViewController *strongSelf = weakSelf;
+                if (!strongSelf) {
+                    return;
+                }
+                if (!granted) {
+                    [strongSelf showFeedback:@"需要相机权限才能使用手电筒"];
+                    return;
+                }
+                [strongSelf toggleFlashlightWithAuthorization];
+            });
+        }];
         return;
     }
+    if (status != AVAuthorizationStatusAuthorized) {
+        [self showFeedback:@"请在设置中允许 ArcLaunch 使用相机权限"];
+        return;
+    }
+    [self toggleFlashlightWithAuthorization];
+}
 
-    NSError *error = nil;
-    if (![device lockForConfiguration:&error]) {
-        [self showFeedback:@"手电筒暂不可用"];
-        return;
-    }
-    BOOL torchWasOn = [device torchMode] == AVCaptureTorchModeOn;
-    if (torchWasOn) {
-        [device setTorchMode:AVCaptureTorchModeOff];
-    } else if (![device setTorchModeOnWithLevel:1.0 error:&error]) {
+- (void)toggleFlashlightWithAuthorization {
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(self.flashlightSessionQueue, ^{
+        FloatingHUDViewController *strongSelf = weakSelf;
+        if (!strongSelf) {
+            return;
+        }
+
+        NSError *error = nil;
+        AVCaptureSession *session = strongSelf.flashlightSession;
+        AVCaptureDevice *device = strongSelf.flashlightDevice;
+        BOOL isTurningOff = session.isRunning && device.torchMode == AVCaptureTorchModeOn;
+        if (!session || !device) {
+            device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+            if (!device || !device.hasTorch) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [strongSelf showFeedback:@"当前设备没有可用的手电筒"];
+                });
+                return;
+            }
+
+            AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
+            if (!input) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [strongSelf showFeedback:@"无法启动手电筒设备"];
+                });
+                return;
+            }
+
+            session = [AVCaptureSession new];
+            AVCapturePhotoOutput *photoOutput = [AVCapturePhotoOutput new];
+            [session beginConfiguration];
+            if ([session canSetSessionPreset:AVCaptureSessionPresetPhoto]) {
+                session.sessionPreset = AVCaptureSessionPresetPhoto;
+            }
+            if (![session canAddInput:input] || ![session canAddOutput:photoOutput]) {
+                [session commitConfiguration];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [strongSelf showFeedback:@"无法启动手电筒设备"];
+                });
+                return;
+            }
+            [session addInput:input];
+            [session addOutput:photoOutput];
+            [session commitConfiguration];
+            [session startRunning];
+            if (!session.isRunning) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [strongSelf showFeedback:@"相机设备无法启动，手电筒不可用"];
+                });
+                return;
+            }
+        } else if (!session.isRunning) {
+            [session startRunning];
+        }
+
+        if (![device lockForConfiguration:&error]) {
+            if (!strongSelf.flashlightSession) {
+                [session stopRunning];
+            }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [strongSelf showFeedback:@"手电筒暂不可用"];
+            });
+            return;
+        }
+
+        BOOL changed = YES;
+        if (isTurningOff) {
+            device.torchMode = AVCaptureTorchModeOff;
+            changed = device.torchMode == AVCaptureTorchModeOff;
+        } else {
+            changed = [device setTorchModeOnWithLevel:1.0 error:&error];
+            changed = changed && session.isRunning && device.torchMode == AVCaptureTorchModeOn;
+        }
         [device unlockForConfiguration];
-        [self showFeedback:@"无法开启手电筒，请确认相机或手电筒没有被其他应用占用"];
-        return;
-    }
-    [device unlockForConfiguration];
-    [self showFeedback:torchWasOn ? @"手电筒已关闭" : @"手电筒已开启"];
+
+        if (!changed) {
+            [session stopRunning];
+            strongSelf.flashlightSession = nil;
+            strongSelf.flashlightDevice = nil;
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [strongSelf showFeedback:isTurningOff ? @"无法关闭手电筒，请重试" : @"无法开启手电筒，请确认闪光灯没有被其他应用占用"];
+            });
+            return;
+        }
+
+        if (isTurningOff) {
+            [session stopRunning];
+            strongSelf.flashlightSession = nil;
+            strongSelf.flashlightDevice = nil;
+        } else {
+            strongSelf.flashlightSession = session;
+            strongSelf.flashlightDevice = device;
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [strongSelf showFeedback:isTurningOff ? @"手电筒已关闭" : @"手电筒已开启"];
+        });
+    });
 }
 
 - (void)launchShortcut:(ArcLaunchShortcut *)shortcut inFloatingWindow:(BOOL)inFloatingWindow {

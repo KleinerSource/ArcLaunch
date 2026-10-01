@@ -59,6 +59,8 @@
     </array>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <key>NSCameraUsageDescription</key>
+    <string>ArcLaunch 启动相机设备以控制手电筒，不会拍摄或保存照片或视频。</string>
     <key>MinimumOSVersion</key>
     <string>15.0</string>
     <key>UIApplicationSystemWindowsSecureKey</key>
