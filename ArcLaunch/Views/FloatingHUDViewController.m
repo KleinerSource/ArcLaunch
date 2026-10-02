@@ -77,6 +77,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 @property (nonatomic, strong) UIView *touchAreaView;
 @property (nonatomic, strong) UIView *barView;
 @property (nonatomic, strong) UIPanGestureRecognizer *panRecognizer;
+@property (nonatomic, strong, nullable) UIPanGestureRecognizer *activeMenuPanRecognizer;
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, UIView *> *fixedTriggerViews;
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, UIView *> *fixedTriggerTouchAreaViews;
 @property (nonatomic, strong) UIVisualEffectView *backdropView;
@@ -280,6 +281,10 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(reloadFromSettings) name:ArcLaunchSettingsDidChangeNotification object:self.settingsStore];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(applicationWillResignActive:) name:UIApplicationWillResignActiveNotification object:nil];
     __weak typeof(self) weakSelf = self;
+    // HUD 常驻前台，系统抢占触摸时不一定收到 UIApplicationWillResignActiveNotification。
+    ArcLaunchSetGlobalTouchEndHandler(^{
+        [weakSelf globalTouchSequenceDidEnd];
+    });
     notify_register_dispatch(ArcLaunchLockStateNotification, &_lockStateToken, dispatch_get_main_queue(), ^(int token) {
         [weakSelf refreshLockState];
     });
@@ -290,6 +295,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     ArcLaunchSetGlobalTapHandler(nil, nil);
+    ArcLaunchSetGlobalTouchEndHandler(nil);
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
     if (_backdropAnimator.state == UIViewAnimatingStateActive) {
         [_backdropAnimator stopAnimation:YES];
@@ -396,18 +402,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
     }
     [self setNeedsUpdateOfScreenEdgesDeferringSystemGestures];
     if (screenLocked) {
-        // 切换 enabled 会取消进行中的滑动或拖动。
-        NSMutableArray<UIView *> *triggerViews = [NSMutableArray arrayWithObject:self.handleView];
-        [triggerViews addObjectsFromArray:self.fixedTriggerViews.allValues];
-        for (UIView *view in triggerViews) {
-            for (UIGestureRecognizer *recognizer in view.gestureRecognizers) {
-                recognizer.enabled = NO;
-                recognizer.enabled = YES;
-            }
-        }
-        self.dragging = NO;
-        self.dragMoved = NO;
-        [self dismissMenuAnimated:NO];
+        [self cancelActiveInteractions];
     }
     self.handleView.hidden = screenLocked;
     // 锁屏时隐藏悬浮窗，场景保持运行，解锁后原样恢复。
@@ -827,6 +822,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 #pragma mark - 收起菜单
 
 - (void)dismissMenuAnimated:(BOOL)animated {
+    self.activeMenuPanRecognizer = nil;
     [self cancelMenuPreviewTimer];
     [self cancelFloatingModeTimer];
     self.previewingMenu = NO;
@@ -1198,18 +1194,50 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
 
 - (void)applicationWillResignActive:(NSNotification *)notification {
     // 系统任务切换手势可能抢占当前触摸序列，导致 panRecognizer 没有收到 Ended 或 Cancelled。
+    [self cancelActiveInteractions];
+}
+
+- (void)globalTouchSequenceDidEnd {
+    // 配置预览有独立的收起计时器，不由用户触摸驱动。
+    if ((self.menuVisible && !self.previewingMenu) || self.dragging) {
+        [self cancelActiveInteractions];
+    }
+}
+
+- (void)cancelActiveInteractions {
+    // 先清空菜单所属手势，避免重置产生的迟到回调干扰下一次展开。
     [self dismissMenuAnimated:NO];
+    self.dragging = NO;
+    self.dragMoved = NO;
+    NSMutableArray<UIView *> *triggerViews = [NSMutableArray arrayWithObject:self.handleView];
+    [triggerViews addObjectsFromArray:self.fixedTriggerViews.allValues];
+    for (UIView *view in triggerViews) {
+        for (UIGestureRecognizer *recognizer in view.gestureRecognizers) {
+            if (recognizer.enabled) {
+                recognizer.enabled = NO;
+                recognizer.enabled = YES;
+            }
+        }
+    }
+    [self layoutHandle];
 }
 
 #pragma mark - 手势
 
 // 从悬浮条向内滑出扇形菜单；滑到图标上显示名称并震动，松手启动该应用，在空白处松手则取消。
 - (void)handlePan:(UIPanGestureRecognizer *)recognizer {
+    if (recognizer.state != UIGestureRecognizerStateBegan && recognizer != self.activeMenuPanRecognizer) {
+        return;
+    }
     CGPoint location = [recognizer locationInView:self.view];
     switch (recognizer.state) {
         case UIGestureRecognizerStateBegan:
+            if (self.activeMenuPanRecognizer && self.activeMenuPanRecognizer != recognizer) {
+                [self dismissMenuAnimated:NO];
+            }
             [self prepareMenuAnchorForTriggerView:recognizer.view];
             if ([self showMenu]) {
+                self.activeMenuPanRecognizer = recognizer;
                 [self updateHoveredItemView:[self menuItemViewNearPoint:location]];
             }
             break;

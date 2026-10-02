@@ -36,6 +36,7 @@
 		A00000000000000000000260 /* ArcLaunchUpdateChecker.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000191 /* ArcLaunchUpdateChecker.m */; };
 		A00000000000000000000261 /* ArcLaunchUpdateCheckerTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000192 /* ArcLaunchUpdateCheckerTests.m */; };
 		A00000000000000000000262 /* ArcLaunchFloatingWindowLayoutTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000198 /* ArcLaunchFloatingWindowLayoutTests.m */; };
+		A00000000000000000000263 /* FloatingHUDViewControllerTests.m in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000199 /* FloatingHUDViewControllerTests.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -102,6 +103,7 @@
 		A00000000000000000000196 /* FloatingAppWindowView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FloatingAppWindowView.m; sourceTree = "<group>"; };
 		A00000000000000000000197 /* ArcLaunchLayerHitTesting.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArcLaunchLayerHitTesting.h; sourceTree = "<group>"; };
 		A00000000000000000000198 /* ArcLaunchFloatingWindowLayoutTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArcLaunchFloatingWindowLayoutTests.m; sourceTree = "<group>"; };
+		A00000000000000000000199 /* FloatingHUDViewControllerTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FloatingHUDViewControllerTests.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -217,6 +219,7 @@
 				A00000000000000000000162 /* SystemApplicationBridgeTests.m */,
 				A00000000000000000000192 /* ArcLaunchUpdateCheckerTests.m */,
 				A00000000000000000000198 /* ArcLaunchFloatingWindowLayoutTests.m */,
+				A00000000000000000000199 /* FloatingHUDViewControllerTests.m */,
 			);
 			path = ArcLaunchTests;
 			sourceTree = "<group>";
@@ -352,6 +355,7 @@
 				A00000000000000000000242 /* SystemApplicationBridgeTests.m in Sources */,
 				A00000000000000000000261 /* ArcLaunchUpdateCheckerTests.m in Sources */,
 				A00000000000000000000262 /* ArcLaunchFloatingWindowLayoutTests.m in Sources */,
+				A00000000000000000000263 /* FloatingHUDViewControllerTests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

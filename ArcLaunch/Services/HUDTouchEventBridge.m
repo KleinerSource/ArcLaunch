@@ -119,9 +119,13 @@ static const uint32_t ArcLaunchDigitizerFieldTouch = (11 << 16) + 9;
 // 移动不超过 12pt、按住不超过 0.5 秒才算轻点，拖动与长按都不触发。
 static const CGFloat ArcLaunchGlobalTapMaximumDistance = 12.0;
 static const NSTimeInterval ArcLaunchGlobalTapMaximumDuration = 0.5;
+static const NSTimeInterval ArcLaunchGlobalTouchEndDelay = 0.1;
 
 static BOOL (^ArcLaunchGlobalTapShouldTrack)(CGPoint);
 static void (^ArcLaunchGlobalTapHandler)(CGPoint);
+static void (^ArcLaunchGlobalTouchEndHandler)(void);
+static BOOL ArcLaunchGlobalTouchActive;
+static NSUInteger ArcLaunchGlobalTouchGeneration;
 static ArcLaunchIOHIDEventSystemClientRef ArcLaunchGlobalTapClient;
 static ArcLaunchHIDEventGetTypeFunction ArcLaunchHIDEventGetType;
 static ArcLaunchHIDEventGetIntegerFunction ArcLaunchHIDEventGetInteger;
@@ -129,6 +133,7 @@ static ArcLaunchHIDEventGetFloatFunction ArcLaunchHIDEventGetFloat;
 static ArcLaunchHIDEventGetChildrenFunction ArcLaunchHIDEventGetChildren;
 /// 按手指标识记录按下位置与时间；超出轻点范围后记为 NSNull，抬起时不再回调。
 static NSMutableDictionary<NSNumber *, id> *ArcLaunchGlobalTapStarts;
+static void ArcLaunchCancelActiveHUDTouches(void);
 
 @interface ArcLaunchGlobalTapStart : NSObject
 @property (nonatomic) CGPoint location;
@@ -194,12 +199,35 @@ static void ArcLaunchHandleGlobalTapFinger(ArcLaunchIOHIDEventRef finger, NSMuta
 
 static void ArcLaunchHandleGlobalTapEvent(void *target, void *refcon, void *sender, ArcLaunchIOHIDEventRef event) {
     @autoreleasepool {
-        if (!event || !ArcLaunchGlobalTapHandler || ArcLaunchHIDEventGetType(event) != ArcLaunchHIDEventTypeDigitizer) {
+        if (!event || (!ArcLaunchGlobalTapHandler && !ArcLaunchGlobalTouchEndHandler) || ArcLaunchHIDEventGetType(event) != ArcLaunchHIDEventTypeDigitizer) {
+            return;
+        }
+        CFArrayRef children = ArcLaunchHIDEventGetChildren(event);
+        CFIndex count = children ? CFArrayGetCount(children) : 0;
+        BOOL touching = ArcLaunchHIDEventGetInteger(event, ArcLaunchDigitizerFieldTouch) != 0;
+        for (CFIndex index = 0; index < count && !touching; index++) {
+            ArcLaunchIOHIDEventRef finger = (ArcLaunchIOHIDEventRef)CFArrayGetValueAtIndex(children, index);
+            touching = ArcLaunchHIDEventGetType(finger) == ArcLaunchHIDEventTypeDigitizer &&
+                ArcLaunchHIDEventGetInteger(finger, ArcLaunchDigitizerFieldTouch) != 0;
+        }
+        if (touching != ArcLaunchGlobalTouchActive) {
+            ArcLaunchGlobalTouchActive = touching;
+            NSUInteger generation = ++ArcLaunchGlobalTouchGeneration;
+            if (!touching && ArcLaunchGlobalTouchEndHandler) {
+                // 让正常 Ended 先完成选中操作；系统抢占后遗漏的终止事件只补 Cancelled。
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(ArcLaunchGlobalTouchEndDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                    if (generation != ArcLaunchGlobalTouchGeneration || !ArcLaunchGlobalTouchEndHandler) {
+                        return;
+                    }
+                    ArcLaunchCancelActiveHUDTouches();
+                    ArcLaunchGlobalTouchEndHandler();
+                });
+            }
+        }
+        if (!ArcLaunchGlobalTapHandler) {
             return;
         }
         NSMutableSet<NSNumber *> *seenIdentities = [NSMutableSet set];
-        CFArrayRef children = ArcLaunchHIDEventGetChildren(event);
-        CFIndex count = children ? CFArrayGetCount(children) : 0;
         if (count == 0) {
             ArcLaunchHandleGlobalTapFinger(event, seenIdentities);
         }
@@ -249,6 +277,14 @@ void ArcLaunchSetGlobalTapHandler(BOOL (^shouldTrack)(CGPoint), void (^handler)(
     ArcLaunchGlobalTapShouldTrack = [shouldTrack copy];
     ArcLaunchGlobalTapHandler = [handler copy];
     [ArcLaunchGlobalTapStarts removeAllObjects];
+    if (handler) {
+        ArcLaunchStartGlobalTapMonitor();
+    }
+}
+
+void ArcLaunchSetGlobalTouchEndHandler(void (^handler)(void)) {
+    ArcLaunchGlobalTouchEndHandler = [handler copy];
+    ++ArcLaunchGlobalTouchGeneration;
     if (handler) {
         ArcLaunchStartGlobalTapMonitor();
     }
@@ -319,6 +355,21 @@ static void ArcLaunchTouchEventSourceCallback(void *context) {
         [event _addTouch:touch forDelayedDelivery:NO];
     }
     [application sendEvent:event];
+}
+
+static void ArcLaunchCancelActiveHUDTouches(void) {
+    BOOL cancelled = NO;
+    for (UITouch *touch in ArcLaunchActiveTouches.allValues) {
+        if (touch.phase != UITouchPhaseEnded && touch.phase != UITouchPhaseCancelled) {
+            [touch setPhaseAndUpdateTimestamp:UITouchPhaseCancelled];
+            cancelled = YES;
+        }
+    }
+    if (cancelled && ArcLaunchTouchEventSource) {
+        ArcLaunchSafeTouches = [ArcLaunchLivingTouches copy];
+        CFRunLoopSourceSignal(ArcLaunchTouchEventSource);
+        CFRunLoopWakeUp(CFRunLoopGetMain());
+    }
 }
 
 static void ArcLaunchReceiveTouch(NSInteger identifier, CGPoint location, UITouchPhase phase, UIWindow *window, UIView *view) {

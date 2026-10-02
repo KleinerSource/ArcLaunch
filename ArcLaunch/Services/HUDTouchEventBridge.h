@@ -7,3 +7,6 @@ FOUNDATION_EXPORT BOOL ArcLaunchRegisterHUDEventCallback(void);
 /// 抬起时界面可能已被这次点击改变（例如边栏缩略图已开始展开）。
 /// 监听不拦截触摸，下层应用照常响应；handler 传 nil 停止回调。
 FOUNDATION_EXPORT void ArcLaunchSetGlobalTapHandler(BOOL (^ _Nullable shouldTrack)(CGPoint fixedLocation), void (^ _Nullable handler)(CGPoint fixedLocation));
+/// 全部手指离开后，在主线程补取消未结束的 HUD 触摸并回调；不拦截系统手势。
+/// 正常结束事件优先派发，期间若有新触摸则取消本次清理；handler 传 nil 停止回调。
+FOUNDATION_EXPORT void ArcLaunchSetGlobalTouchEndHandler(void (^ _Nullable handler)(void));
