@@ -172,7 +172,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchSupportRow) {
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     switch (section) {
         case ArcLaunchConfigurationSectionHUD:
-            return @"悬浮条位于屏幕边缘内侧。从悬浮条向内滑动展开扇形菜单，滑到图标上会显示名称并震动；停留后松手可按悬浮分屏等待时间选择悬浮窗打开，在空白处松手则取消。长按不移动回到此设置页，长按后拖动可调整位置。锁屏界面会自动隐藏悬浮条。";
+            return @"悬浮条位于屏幕边缘内侧。从悬浮条向内滑动展开扇形菜单，滑到图标上会显示名称并震动；停留后松手可按悬浮分屏等待时间选择悬浮窗打开，在空白处松手则取消。未配置悬浮应用时，长按不移动可回到此设置页；添加应用后该入口停用，长按拖动仍可调整位置。锁屏界面会自动隐藏悬浮条。";
         case ArcLaunchConfigurationSectionTrigger:
             return @"把手模式沿用当前可拖动悬浮条，热区为矩形。固定位置模式可同时启用多个屏幕角落；水平位置、垂直位置、边缘弧度、宽度和高度收在“触发器微调”中，并统一应用到所有已选角落。位置以对应屏幕边缘为基准。关闭横屏触发后，横屏时不会拦截游戏触摸。";
         case ArcLaunchConfigurationSectionAppearance:

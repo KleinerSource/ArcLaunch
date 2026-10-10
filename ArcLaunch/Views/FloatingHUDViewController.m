@@ -1271,12 +1271,21 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
     }
 }
 
-// 长按不动进入设置页；长按后拖动可沿边缘移动悬浮条，越过屏幕中线会换到另一侧。
+// 未配置悬浮应用时，长按不动进入设置页；长按后拖动仍可沿边缘移动悬浮条。
+- (BOOL)hasConfiguredFloatingAppShortcut {
+    for (ArcLaunchShortcut *shortcut in self.settingsStore.settings.shortcuts) {
+        if (!shortcut.isSystemAction && shortcut.bundleIdentifier.length > 0) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
 - (void)handleLongPress:(UILongPressGestureRecognizer *)recognizer {
     if (self.settingsStore.settings.menuTriggerMode == ArcLaunchMenuTriggerModeFixedCorners) {
         if (recognizer.state == UIGestureRecognizerStateBegan) {
             [self dismissMenuAnimated:YES];
-        } else if (recognizer.state == UIGestureRecognizerStateEnded && self.openConfigurationHandler) {
+        } else if (recognizer.state == UIGestureRecognizerStateEnded && ![self hasConfiguredFloatingAppShortcut] && self.openConfigurationHandler) {
             self.openConfigurationHandler();
         }
         return;
@@ -1331,7 +1340,7 @@ typedef NS_ENUM(NSInteger, ArcLaunchResolvedAppearance) {
                     settings.edge = edge;
                     settings.normalizedVerticalPosition = normalizedPosition;
                 }];
-            } else if (ended && self.openConfigurationHandler) {
+            } else if (ended && !moved && ![self hasConfiguredFloatingAppShortcut] && self.openConfigurationHandler) {
                 self.openConfigurationHandler();
             }
             [UIView animateWithDuration:0.18 animations:^{
